@@ -4,7 +4,10 @@
   "description": "test",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
@@ -12,5 +15,12 @@
   "dependencies": {
     "express": "^5.2.1",
     "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.2",
+    "@types/sqlite3": "^3.1.11",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^7.0.2"
   }
 }
