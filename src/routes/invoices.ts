@@ -104,11 +104,11 @@ router.delete('/:id/items/:itemId', async (req: Request, res: Response, next: Ne
   } catch (err) { next(err); }
 });
 
-// Commit Invoice: Updates physical stock, adjusts party balance, records ledger entry
+// Commit Invoice: Handles Cash, Partial Cash, Pure Credit, and Old Debt Paydown
 router.post('/:id/commit', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const invoiceId = req.params.id;
-    const { paidAmount = 0 } = req.body;
+    const paidAmount = Math.max(0, Number(req.body.paidAmount) || 0);
 
     await db.transaction(async () => {
       const invoice = await db.get<any>('SELECT * FROM invoices WHERE id = ?', [invoiceId]);
@@ -120,45 +120,75 @@ router.post('/:id/commit', async (req: Request, res: Response, next: NextFunctio
       const party = await db.get<any>('SELECT * FROM parties WHERE id = ?', [invoice.party_id]);
       if (!party) throw new Error('Party not found.');
 
-      // 1. Process Inventory
+      // 1. Physical Inventory Adjustments
       for (const item of items) {
         if (invoice.type === 'OUT') {
           const prod = await db.get<any>('SELECT stock_spools FROM products WHERE id = ?', [item.product_id]);
           if (prod.stock_spools < item.base_quantity_spools) {
-            throw new Error(`Insufficient inventory for product ID: ${item.product_id}`);
+            throw new Error(`Insufficient inventory for product: ${item.product_name || item.product_id}`);
           }
           await db.run('UPDATE products SET stock_spools = stock_spools - ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
         } else {
-          // Inbound Purchase: Adds to stock
           await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
         }
       }
 
-      // 2. Financials
-      const totalAmount = invoice.total_amount;
-      const balanceDue = totalAmount - paidAmount;
-      const newPartyBalance = invoice.type === 'OUT'
-        ? party.current_balance + balanceDue
-        : party.current_balance - balanceDue;
+      // 2. Financial Calculations
+      const invoiceTotal = invoice.total_amount;
+      // Balance remaining specifically on this invoice
+      const invoiceBalanceDue = Math.max(0, invoiceTotal - paidAmount);
 
-      await db.run('UPDATE parties SET current_balance = ? WHERE id = ?', [newPartyBalance, party.id]);
+      let runningBalance = party.current_balance;
 
+      if (invoice.type === 'OUT') {
+        // --- CUSTOMER SALE ---
+        // A. Record Bill Charge (Customer owes for goods)
+        runningBalance += invoiceTotal;
+        await db.run(
+          `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+           VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+          [party.id, invoice.id, invoiceTotal, runningBalance, `Invoice #${invoice.invoice_number}`]
+        );
+
+        // B. If customer paid any cash, record payment credit
+        if (paidAmount > 0) {
+          runningBalance -= paidAmount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+            [party.id, invoice.id, paidAmount, runningBalance, `Cash Paid for #${invoice.invoice_number}`]
+          );
+        }
+      } else {
+        // --- SUPPLIER PURCHASE ---
+        // A. Record Supplier Bill (We owe supplier for goods)
+        runningBalance -= invoiceTotal;
+        await db.run(
+          `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+           VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+          [party.id, invoice.id, invoiceTotal, runningBalance, `Supplier Bill #${invoice.invoice_number}`]
+        );
+
+        // B. If we paid cash to supplier, reduce payable balance
+        if (paidAmount > 0) {
+          runningBalance += paidAmount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+            [party.id, invoice.id, paidAmount, runningBalance, `Cash Paid for #${invoice.invoice_number}`]
+          );
+        }
+      }
+
+      // 3. Update Party's Final Running Debt Balance
+      await db.run('UPDATE parties SET current_balance = ? WHERE id = ?', [runningBalance, party.id]);
+
+      // 4. Mark Invoice as Completed with Snapshotted Financials
       await db.run(
-        `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          party.id,
-          invoice.id,
-          invoice.type === 'OUT' ? 'DEBIT' : 'CREDIT',
-          balanceDue,
-          newPartyBalance,
-          `Committed ${invoice.type === 'OUT' ? 'Sale' : 'Purchase'} #${invoice.invoice_number}`
-        ]
-      );
-
-      await db.run(
-        `UPDATE invoices SET status = 'COMPLETED', paid_amount = ?, balance_due = ?, committed_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [paidAmount, balanceDue, invoiceId]
+        `UPDATE invoices 
+         SET status = 'COMPLETED', paid_amount = ?, balance_due = ?, committed_at = CURRENT_TIMESTAMP 
+         WHERE id = ?`,
+        [paidAmount, invoiceBalanceDue, invoiceId]
       );
     });
 

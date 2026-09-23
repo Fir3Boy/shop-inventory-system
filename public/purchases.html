@@ -13,12 +13,13 @@
       <div class="tiles-grid" id="purTiles"></div>
     </section>
 
+    <!-- Inbound Draft Sheet with Live Cash/Credit Handling -->
     <aside class="pos-invoice">
       <div class="sheet-header">
         <h2>Stock IN (Supplier Purchase)</h2>
         <div class="field-group">
           <label>Supplier:</label>
-          <select id="partySelect" onchange="draftEngine.createNewDraft()"></select>
+          <select id="partySelect" onchange="draftEngine.handlePartyChange()"></select>
         </div>
       </div>
 
@@ -31,11 +32,35 @@
         </table>
       </div>
 
+      <!-- Financial Breakdown & Cash Outflow -->
       <div class="sheet-footer">
-        <div class="total-row">
-          <span>Supplier Payable Due:</span>
-          <span id="txtTotalDue">$0.00</span>
+        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 4px; color:#64748b;">
+          <span>Previous Balance Owed:</span>
+          <span id="txtOldBalance">$0.00</span>
         </div>
+        
+        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:1.15rem; font-weight:700;">
+          <span>Current Inward Total:</span>
+          <span id="txtBillTotal">$0.00</span>
+        </div>
+
+        <!-- Cash Paid to Supplier Section -->
+        <div style="background:#f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #cbd5e1;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+            <label style="font-weight:700; font-size:0.9rem;">Cash Paid to Supplier ($):</label>
+            <button type="button" class="btn-action" style="padding: 4px 10px; font-size:0.8rem; background:#7c3aed;" onclick="draftEngine.setFullCash()">
+              💵 Paid in Full
+            </button>
+          </div>
+          <input type="number" id="inputCashPaid" step="0.01" value="0.00" oninput="draftEngine.calculateBalances()" 
+                 style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #94a3b8; border-radius:4px; text-align:right;">
+        </div>
+
+        <div class="total-row" style="font-size:1.1rem; color:#1e293b; margin-bottom: 12px;">
+          <span>New Balance With Supplier:</span>
+          <span id="txtNewBalance">$0.00</span>
+        </div>
+
         <button class="btn-commit purchase" onclick="draftEngine.commit(this)">+ COMMIT STOCK IN (PURCHASE)</button>
       </div>
     </aside>
@@ -75,7 +100,8 @@
   <script src="js/cascade.js"></script>
   <script src="js/invoice-draft.js"></script>
   <script>
-    const draftEngine = new InvoiceDraftEngine('IN', 'partySelect', 'invoiceItemsBody', 'txtTotalDue');
+// Initialized for Stock IN (Purchases)
+    const draftEngine = new InvoiceDraftEngine('IN', 'partySelect', 'invoiceItemsBody');
     const catalog = new CatalogDrillDown('purTiles', 'purBreadcrumbs', (p) => draftEngine.openAddModal(p));
   </script>
 </body>

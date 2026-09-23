@@ -1,13 +1,23 @@
 class InvoiceDraftEngine {
-  constructor(invoiceType, partySelectId, tableBodyId, totalDisplayId) {
+  constructor(invoiceType, partySelectId, tableBodyId) {
     this.type = invoiceType; // 'OUT' or 'IN'
     this.partySelect = document.getElementById(partySelectId);
     this.tableBody = document.getElementById(tableBodyId);
-    this.totalDisplay = document.getElementById(totalDisplayId);
+
+    this.txtOldBalance = document.getElementById('txtOldBalance');
+    this.txtBillTotal = document.getElementById('txtBillTotal');
+    this.inputCashPaid = document.getElementById('inputCashPaid');
+    this.txtNewBalance = document.getElementById('txtNewBalance');
+
     this.currentDraft = null;
+    this.currentParty = null;
+    this.partiesList = [];
+    this.currentBillTotal = 0;
+
     this.selectedProduct = null;
     this.currentUnit = 'CARTON';
     this.currentQty = 1;
+
     this.init();
   }
 
@@ -19,23 +29,33 @@ class InvoiceDraftEngine {
   async loadParties() {
     const filter = this.type === 'OUT' ? 'CUSTOMER' : 'SUPPLIER';
     const res = await fetch(`/api/parties?type=${filter}`);
-    const parties = await res.json();
+    this.partiesList = await res.json();
 
-    this.partySelect.innerHTML = parties.map(p => 
-      `<option value="${p.id}">${p.name} (Bal: $${p.current_balance})</option>`
+    this.partySelect.innerHTML = this.partiesList.map(p => 
+      `<option value="${p.id}">${p.name} (Bal: $${p.current_balance.toFixed(2)})</option>`
     ).join('');
+
+    await this.handlePartyChange();
+  }
+
+  async handlePartyChange() {
+    const partyId = parseInt(this.partySelect.value);
+    this.currentParty = this.partiesList.find(p => p.id === partyId) || null;
+
+    if (this.txtOldBalance && this.currentParty) {
+      this.txtOldBalance.innerText = `$${this.currentParty.current_balance.toFixed(2)}`;
+    }
 
     await this.createNewDraft();
   }
 
   async createNewDraft() {
-    const partyId = this.partySelect.value;
-    if (!partyId) return;
+    if (!this.currentParty) return;
 
     const res = await fetch('/api/invoices/draft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ partyId, type: this.type })
+      body: JSON.stringify({ partyId: this.currentParty.id, type: this.type })
     });
     this.currentDraft = await res.json();
     this.renderTable([]);
@@ -48,7 +68,7 @@ class InvoiceDraftEngine {
 
     document.getElementById('modalProductName').innerText = product.name;
     document.getElementById('modalStockInfo').innerText = 
-      `Ratio: 1 Ctn = ${product.spools_per_carton} Spools | Current Stock: ${product.stock_spools} Spools`;
+      `Ratio: 1 Ctn = ${product.spools_per_carton} Spools | Stock: ${product.stock_spools} Spools`;
     document.getElementById('qtyDisplay').innerText = this.currentQty;
     
     this.setUnit('CARTON');
@@ -60,12 +80,10 @@ class InvoiceDraftEngine {
     document.getElementById('btnUnitCarton').className = `unit-btn ${unit === 'CARTON' ? 'active' : ''}`;
     document.getElementById('btnUnitSpool').className = `unit-btn ${unit === 'SPOOL' ? 'active' : ''}`;
 
-    // Default wholesale/retail suggestion based on invoice type
     let defaultPrice = 0;
     if (this.type === 'OUT') {
       defaultPrice = unit === 'CARTON' ? this.selectedProduct.wholesale_price_carton : this.selectedProduct.retail_price_spool;
     } else {
-      // Inbound purchase uses cost price
       defaultPrice = unit === 'CARTON' 
         ? (this.selectedProduct.cost_price_spool * this.selectedProduct.spools_per_carton) 
         : this.selectedProduct.cost_price_spool;
@@ -119,7 +137,8 @@ class InvoiceDraftEngine {
   renderTable(items) {
     if (!items || items.length === 0) {
       this.tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px; color: #94a3b8;">No items in sheet.</td></tr>`;
-      this.totalDisplay.innerText = '$0.00';
+      this.currentBillTotal = 0;
+      this.calculateBalances();
       return;
     }
 
@@ -138,26 +157,62 @@ class InvoiceDraftEngine {
       `;
     }).join('');
 
-    this.totalDisplay.innerText = `$${total.toFixed(2)}`;
+    this.currentBillTotal = total;
+    this.calculateBalances();
+  }
+
+  // Set Cash Received = Bill Total with 1 click
+  setFullCash() {
+    if (this.inputCashPaid) {
+      this.inputCashPaid.value = this.currentBillTotal.toFixed(2);
+      this.calculateBalances();
+    }
+  }
+
+  // Real-time recalculation of remaining party balance
+  calculateBalances() {
+    if (this.txtBillTotal) {
+      this.txtBillTotal.innerText = `$${this.currentBillTotal.toFixed(2)}`;
+    }
+
+    const cashPaid = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
+    const oldBalance = this.currentParty ? this.currentParty.current_balance : 0;
+
+    let newBalance = oldBalance;
+    if (this.type === 'OUT') {
+      // Sale: Old Debt + Today's Bill - Cash Received
+      newBalance = oldBalance + this.currentBillTotal - cashPaid;
+    } else {
+      // Purchase: We owe more (+ bill), minus cash we pay
+      newBalance = oldBalance - this.currentBillTotal + cashPaid;
+    }
+
+    if (this.txtNewBalance) {
+      this.txtNewBalance.innerText = `$${newBalance.toFixed(2)}`;
+      this.txtNewBalance.style.color = newBalance > 0 ? '#16a34a' : '#dc2626';
+    }
   }
 
   async commit(btn) {
     if (!this.currentDraft) return;
-    if (!confirm(`Finalize and commit this ${this.type === 'OUT' ? 'SALE' : 'PURCHASE'}?`)) return;
+    if (!confirm('Finalize and commit this invoice?')) return;
+
+    const cashPaid = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
 
     btn.disabled = true;
     const res = await fetch(`/api/invoices/${this.currentDraft.id}/commit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paidAmount: 0 })
+      body: JSON.stringify({ paidAmount: cashPaid })
     });
 
     const data = await res.json();
     btn.disabled = false;
 
-    if (data.error) alert(`Failed: ${data.error}`);
-    else {
-      alert('Invoice finalized! Balances and stocks updated.');
+    if (data.error) {
+      alert(`Commit Failed: ${data.error}`);
+    } else {
+      alert('Invoice committed successfully!');
       window.location.reload();
     }
   }
