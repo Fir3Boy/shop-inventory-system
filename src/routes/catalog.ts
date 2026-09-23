@@ -36,18 +36,38 @@ router.post('/brands', async (req: Request, res: Response, next: NextFunction) =
   } catch (err) { next(err); }
 });
 
-// Level 3 & 4: Products under a Brand (Calculates Cartons and Loose Spools live)
+// Level 3 & 4: Products under Brand with Dynamic "Last Inward Cost"
 router.get('/brands/:brandId/products', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const rows = await db.all(
       `SELECT 
-        id, brand_id, sku, name, spools_per_carton, stock_spools,
-        CAST(stock_spools / spools_per_carton AS INTEGER) AS stock_cartons,
-        (stock_spools % spools_per_carton) AS loose_spools,
-        cost_price_spool, retail_price_spool, wholesale_price_carton, is_active
-       FROM products 
-       WHERE brand_id = ? AND is_active = 1 
-       ORDER BY name ASC`,
+        p.id, p.brand_id, p.sku, p.name, p.spools_per_carton, p.stock_spools,
+        CAST(p.stock_spools / p.spools_per_carton AS INTEGER) AS stock_cartons,
+        (p.stock_spools % p.spools_per_carton) AS loose_spools,
+        p.cost_price_spool, p.retail_price_spool, p.wholesale_price_carton, p.is_active,
+        
+        -- DYNAMIC LAST INWARD COST: Look up the latest committed 'IN' purchase invoice
+        COALESCE(
+          (
+            SELECT 
+              CASE 
+                WHEN ii.unit = 'CARTON' THEN (ii.unit_price / ii.spools_per_carton_snapshot)
+                ELSE ii.unit_price 
+              END
+            FROM invoice_items ii
+            JOIN invoices i ON ii.invoice_id = i.id
+            WHERE ii.product_id = p.id 
+              AND i.type = 'IN' 
+              AND i.status = 'COMPLETED'
+            ORDER BY i.committed_at DESC, ii.id DESC 
+            LIMIT 1
+          ),
+          p.cost_price_spool
+        ) AS last_cost_spool
+        
+       FROM products p 
+       WHERE p.brand_id = ? AND p.is_active = 1 
+       ORDER BY p.name ASC`,
       [req.params.brandId]
     );
     res.json(rows);

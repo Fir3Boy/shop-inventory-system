@@ -75,21 +75,77 @@ class InvoiceDraftEngine {
     document.getElementById('unitModal').style.display = 'flex';
   }
 
+// Update unit selection & calculate base cost hint
   setUnit(unit) {
     this.currentUnit = unit;
     document.getElementById('btnUnitCarton').className = `unit-btn ${unit === 'CARTON' ? 'active' : ''}`;
     document.getElementById('btnUnitSpool').className = `unit-btn ${unit === 'SPOOL' ? 'active' : ''}`;
 
+    const lastCostSpool = this.selectedProduct.last_cost_spool || 0;
+    const ratio = this.selectedProduct.spools_per_carton;
+    
+    // Calculate cost in the currently selected unit
+    const unitCost = unit === 'CARTON' ? (lastCostSpool * ratio) : lastCostSpool;
+
+    // Display the cost floor hint
+    const hintEl = document.getElementById('txtLastCostHint');
+    if (hintEl) {
+      hintEl.innerText = `Last Inward Cost: $${unitCost.toFixed(2)} / ${unit === 'CARTON' ? 'Ctn' : 'Spool'}`;
+    }
+
+    // Default price suggestion
     let defaultPrice = 0;
     if (this.type === 'OUT') {
       defaultPrice = unit === 'CARTON' ? this.selectedProduct.wholesale_price_carton : this.selectedProduct.retail_price_spool;
     } else {
-      defaultPrice = unit === 'CARTON' 
-        ? (this.selectedProduct.cost_price_spool * this.selectedProduct.spools_per_carton) 
-        : this.selectedProduct.cost_price_spool;
+      defaultPrice = unitCost;
     }
 
-    document.getElementById('modalPriceInput').value = defaultPrice.toFixed(2);
+    const priceInput = document.getElementById('modalPriceInput');
+    priceInput.value = defaultPrice.toFixed(2);
+    
+    this.updateMarginDisplay();
+  }
+
+// Live Profit (Sales) OR Price-Change Tracker (Purchases)
+  updateMarginDisplay() {
+    const feedbackEl = document.getElementById('txtMarginFeedback');
+    if (!feedbackEl || !this.selectedProduct) return;
+
+    const currentPrice = parseFloat(document.getElementById('modalPriceInput').value) || 0;
+    const lastCostSpool = this.selectedProduct.last_cost_spool || 0;
+    const ratio = this.selectedProduct.spools_per_carton;
+    const prevCost = this.currentUnit === 'CARTON' ? (lastCostSpool * ratio) : lastCostSpool;
+
+    const diff = currentPrice - prevCost;
+    const percentChange = prevCost > 0 ? ((diff / prevCost) * 100).toFixed(1) : 0;
+
+    // --- CASE 1: SALES COUNTER (Profit Margin) ---
+    if (this.type === 'OUT') {
+      if (diff < 0) {
+        feedbackEl.style.color = '#dc2626'; // Red
+        feedbackEl.innerText = `⚠️ Selling BELOW cost! (-$${Math.abs(diff).toFixed(2)} loss/unit)`;
+      } else if (diff === 0) {
+        feedbackEl.style.color = '#64748b';
+        feedbackEl.innerText = `Break-even ($0.00 profit)`;
+      } else {
+        feedbackEl.style.color = '#16a34a'; // Green
+        feedbackEl.innerText = `✅ Profit: +$${diff.toFixed(2)} per unit (+${percentChange}%)`;
+      }
+    } 
+    // --- CASE 2: PURCHASES / STOCK IN (Supplier Price Difference) ---
+    else {
+      if (diff > 0) {
+        feedbackEl.style.color = '#ea580c'; // Orange warning
+        feedbackEl.innerText = `📈 Price INCREASE: +$${diff.toFixed(2)} (+${percentChange}%) higher than last batch`;
+      } else if (diff < 0) {
+        feedbackEl.style.color = '#16a34a'; // Green discount
+        feedbackEl.innerText = `📉 Price DECREASE: -$${Math.abs(diff).toFixed(2)} (-${Math.abs(percentChange)}%) cheaper than last batch`;
+      } else {
+        feedbackEl.style.color = '#64748b';
+        feedbackEl.innerText = `Same as previous purchase rate`;
+      }
+    }
   }
 
   adjustQty(val) {

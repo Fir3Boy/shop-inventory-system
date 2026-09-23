@@ -52,7 +52,7 @@
               💵 Paid in Full
             </button>
           </div>
-          <input type="number" id="inputCashPaid" step="0.01" value="0.00" oninput="draftEngine.calculateBalances()" 
+          <input type="number" id="inputCashPaid" step="10.00" value="0.00" oninput="draftEngine.calculateBalances()" 
                  style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #94a3b8; border-radius:4px; text-align:right;">
         </div>
 
@@ -67,7 +67,7 @@
 
   </div>
 
-  <!-- Reusable Touch Selection Modal -->
+<!-- Reusable Touch Selection Modal for Inward Stock -->
   <div class="modal-overlay" id="unitModal">
     <div class="modal-content">
       <h3 id="modalProductName">Select Unit & Quantity</h3>
@@ -84,9 +84,21 @@
         <button class="btn-circle" onclick="adjustModalQty(1)">+</button>
       </div>
 
+      <!-- Cost & Supplier Price-Hike Tracker -->
       <div class="price-box">
-        <label style="font-size:0.85rem; font-weight:bold;">Inward Cost per Unit ($):</label>
-        <input type="number" id="modalPriceInput" step="10.00">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+          <label style="font-size:0.85rem; font-weight:bold;">Supplier Cost per Unit ($):</label>
+          <!-- Badge showing previous purchase price -->
+          <span id="txtLastCostHint" style="font-size:0.75rem; background:#e0e7ff; color:#3730a3; padding:3px 8px; border-radius:4px; font-weight:700;">
+            Prev Cost: $0.00
+          </span>
+        </div>
+
+        <!-- Inward cost input -->
+        <input type="number" id="modalPriceInput" step="0.01" oninput="draftEngine.updateMarginDisplay()">
+
+        <!-- Shows if supplier raised or reduced the price -->
+        <div id="txtMarginFeedback" style="margin-top:6px; font-size:0.8rem; font-weight:700;"></div>
       </div>
 
       <div class="modal-actions">
