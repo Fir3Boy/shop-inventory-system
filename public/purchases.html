@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stock Inward (Purchases) - Textile ERP</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page-container">
+    
+    <section class="pos-catalog">
+      <div class="breadcrumb-bar" id="purBreadcrumbs"></div>
+      <div class="tiles-grid" id="purTiles"></div>
+    </section>
+
+    <aside class="pos-invoice">
+      <div class="sheet-header">
+        <h2>Stock IN (Supplier Purchase)</h2>
+        <div class="field-group">
+          <label>Supplier:</label>
+          <select id="partySelect" onchange="draftEngine.createNewDraft()"></select>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Item</th><th>Unit</th><th>Qty</th><th>Cost</th><th>Total</th><th></th></tr>
+          </thead>
+          <tbody id="invoiceItemsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="sheet-footer">
+        <div class="total-row">
+          <span>Supplier Payable Due:</span>
+          <span id="txtTotalDue">$0.00</span>
+        </div>
+        <button class="btn-commit purchase" onclick="draftEngine.commit(this)">+ COMMIT STOCK IN (PURCHASE)</button>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Reusable Touch Selection Modal -->
+  <div class="modal-overlay" id="unitModal">
+    <div class="modal-content">
+      <h3 id="modalProductName">Select Unit & Quantity</h3>
+      <p id="modalStockInfo" style="font-size:0.85rem; color:#64748b; margin: 8px 0;"></p>
+      
+      <div class="unit-toggle-group">
+        <button class="unit-btn active" id="btnUnitCarton" onclick="setModalUnit('CARTON')">Carton</button>
+        <button class="unit-btn" id="btnUnitSpool" onclick="setModalUnit('SPOOL')">Spool</button>
+      </div>
+
+      <div class="counter-box">
+        <button class="btn-circle" onclick="adjustModalQty(-1)">-</button>
+        <span class="qty-display" id="qtyDisplay">1</span>
+        <button class="btn-circle" onclick="adjustModalQty(1)">+</button>
+      </div>
+
+      <div class="price-box">
+        <label style="font-size:0.85rem; font-weight:bold;">Inward Cost per Unit ($):</label>
+        <input type="number" id="modalPriceInput" step="0.01">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-confirm" onclick="confirmAddItem()">Add to Sheet</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/cascade.js"></script>
+  <script src="js/invoice-draft.js"></script>
+  <script>
+    const draftEngine = new InvoiceDraftEngine('IN', 'partySelect', 'invoiceItemsBody', 'txtTotalDue');
+    const catalog = new CatalogDrillDown('purTiles', 'purBreadcrumbs', (p) => draftEngine.openAddModal(p));
+  </script>
+</body>
+</html>

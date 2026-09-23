@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Customer & Supplier Debts - Textile ERP</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2>Party Balances (Receivables & Payables)</h2>
+    </div>
+
+    <div class="card">
+      <table class="data-table">
+        <thead>
+          <tr><th>Name</th><th>Type</th><th>Phone</th><th>Net Balance</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="partiesTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Detailed Ledger & Payment Modal -->
+  <div class="modal-overlay" id="ledgerModal">
+    <div class="modal-content" style="width: 600px; text-align: left;">
+      <h3 id="ledgerPartyTitle">Party Ledger</h3>
+      
+      <div style="max-height: 250px; overflow-y: auto; margin: 16px 0; border: 1px solid #e2e8f0;">
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Note</th><th>Type</th><th>Amount</th><th>Bal After</th></tr></thead>
+          <tbody id="ledgerLogsBody"></tbody>
+        </table>
+      </div>
+
+      <form onsubmit="recordDirectPayment(event)" style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <input type="hidden" id="paymentPartyId">
+        <label style="font-weight:bold; font-size:0.85rem;">Record Cash Settlement ($):</label>
+        <div style="display:flex; gap: 8px; margin-top: 6px;">
+          <input type="number" id="payAmount" step="0.01" placeholder="Enter amount" required style="flex:1; padding:8px; border:1px solid #cbd5e1; border-radius:4px;">
+          <button type="submit" class="btn-confirm" style="flex: initial; padding: 8px 16px;">Record Cash</button>
+        </div>
+      </form>
+
+      <div style="margin-top: 12px; text-align: right;">
+        <button class="btn-cancel" onclick="document.getElementById('ledgerModal').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/debts.js"></script>
+</body>
+</html>

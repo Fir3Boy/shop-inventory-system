@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Inventory Management - Textile ERP</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+    <div class="admin-grid">
+      
+      <!-- Brand Creator -->
+      <div class="card">
+        <h2>➕ Add New Brand</h2>
+        <form onsubmit="handleCreateBrand(event)">
+          <label>Root Category:</label>
+          <select id="catSelect"></select>
+          
+          <label>Brand Name:</label>
+          <input type="text" id="brandName" placeholder="e.g. Shaheen Velvet" required>
+
+          <button type="submit" class="btn-action">Create Brand</button>
+        </form>
+      </div>
+
+      <!-- SKU Creator -->
+      <div class="card" style="grid-column: span 2;">
+        <h2>➕ Create Product SKU</h2>
+        <form onsubmit="handleCreateProduct(event)">
+          <div class="row-fields">
+            <div>
+              <label>Select Brand:</label>
+              <select id="brandSelect"></select>
+            </div>
+            <div>
+              <label>SKU Code:</label>
+              <input type="text" id="skuInput" placeholder="e.g. SH-RED-01" required>
+            </div>
+          </div>
+
+          <label>Product Display Name:</label>
+          <input type="text" id="nameInput" placeholder="e.g. Royal Silk Red Thread" required>
+
+          <div class="row-fields">
+            <div>
+              <label>Spools per Carton (Ratio):</label>
+              <input type="number" id="ratioInput" value="24" min="1" required>
+            </div>
+            <div>
+              <label>Initial Stock (Total Spools):</label>
+              <input type="number" id="stockInput" value="0" min="0">
+            </div>
+          </div>
+
+          <div class="row-fields">
+            <div>
+              <label>Cost / Spool ($):</label>
+              <input type="number" step="0.01" id="costInput" value="0.00">
+            </div>
+            <div>
+              <label>Retail / Spool ($):</label>
+              <input type="number" step="0.01" id="retailInput" value="0.00">
+            </div>
+            <div>
+              <label>Wholesale / Carton ($):</label>
+              <input type="number" step="0.01" id="wholesaleInput" value="0.00">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-action">Save Product SKU</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/inventory.js"></script>
+</body>
+</html>
