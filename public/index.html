@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Textile Shop System</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="logo">🧵 TEXTILE ERP</div>
+    <div class="nav-tabs">
+      <button class="nav-btn active" id="tabPos" onclick="switchView('pos')">🛒 POS Sales Counter</button>
+      <button class="nav-btn" id="tabAdmin" onclick="switchView('admin')">⚙️ Manage Items & Brands</button>
+    </div>
+  </header>
+
+  <!-- VIEW 1: POS SALES COUNTER -->
+  <main id="viewPos" class="pos-container">
+    <section class="catalog-panel">
+      <nav class="breadcrumb-bar" id="breadcrumbBar">
+        <button class="crumb-btn active" onclick="loadCategories()">Categories</button>
+      </nav>
+      <div class="tiles-grid" id="tilesGrid"></div>
+    </section>
+
+    <aside class="invoice-panel">
+      <div class="panel-header">
+        <h2>Active Invoice</h2>
+        <div class="party-select-box">
+          <label>Customer:</label>
+          <select id="partySelect" onchange="startDraftInvoice()"></select>
+        </div>
+      </div>
+
+      <div class="sheet-table-wrapper">
+        <table class="sheet-table">
+          <thead>
+            <tr><th>Item</th><th>Unit</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+          </thead>
+          <tbody id="invoiceItemsBody">
+            <tr><td colspan="5" class="empty-msg">No items added yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="invoice-footer">
+        <div class="summary-line font-large">
+          <span>Total Balance Due:</span>
+          <strong id="txtTotal">$0.00</strong>
+        </div>
+        <button class="btn-commit" onclick="commitInvoice()">✓ COMMIT INVOICE</button>
+      </div>
+    </aside>
+  </main>
+
+  <!-- VIEW 2: MANAGEMENT INTERFACE -->
+  <main id="viewAdmin" class="admin-container" style="display: none;">
+    
+    <!-- Add Brand Card -->
+    <div class="admin-card">
+      <h3>➕ Create New Brand</h3>
+      <form onsubmit="handleCreateBrand(event)">
+        <label>Select Category:</label>
+        <select id="adminCategorySelect" required></select>
+
+        <label>Brand Name:</label>
+        <input type="text" id="brandNameInput" placeholder="e.g. Royal Silk Mills" required>
+
+        <button type="submit" class="btn-primary">Save Brand</button>
+      </form>
+    </div>
+
+    <!-- Add Product SKU Card -->
+    <div class="admin-card">
+      <h3>➕ Create New Product SKU</h3>
+      <form onsubmit="handleCreateProduct(event)">
+        <label>Select Brand:</label>
+        <select id="adminBrandSelect" required></select>
+
+        <label>Product Name & Description:</label>
+        <input type="text" id="prodNameInput" placeholder="e.g. Velvet Crimson Spool" required>
+
+        <label>Unique SKU Code:</label>
+        <input type="text" id="prodSkuInput" placeholder="e.g. VEL-RED-01" required>
+
+        <label>Spools per Carton (Ratio):</label>
+        <input type="number" id="prodRatioInput" value="24" min="1" required>
+
+        <label>Initial Stock (Total Spools):</label>
+        <input type="number" id="prodStockInput" value="0" min="0" required>
+
+        <div class="form-row">
+          <div>
+            <label>Carton Price ($):</label>
+            <input type="number" id="prodWholesaleInput" step="0.01" value="0.00" required>
+          </div>
+          <div>
+            <label>Retail Spool Price ($):</label>
+            <input type="number" id="prodRetailInput" step="0.01" value="0.00" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary">Save Product</button>
+      </form>
+    </div>
+
+    <!-- Add Customer / Supplier Card -->
+    <div class="admin-card">
+      <h3>➕ Add Customer or Supplier</h3>
+      <form onsubmit="handleCreateParty(event)">
+        <label>Party Type:</label>
+        <select id="partyTypeSelect">
+          <option value="CUSTOMER">Customer (Buyer)</option>
+          <option value="SUPPLIER">Supplier (Vendor)</option>
+        </select>
+
+        <label>Name / Shop Name:</label>
+        <input type="text" id="partyNameInput" placeholder="e.g. Tariq Boutique" required>
+
+        <label>Phone Number:</label>
+        <input type="text" id="partyPhoneInput" placeholder="e.g. 0300-1234567">
+
+        <label>Opening Balance ($):</label>
+        <input type="number" id="partyBalanceInput" step="0.01" value="0.00">
+
+        <button type="submit" class="btn-primary">Save Party</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Unit & Flexible Price Selection Modal -->
+  <div class="modal" id="unitModal">
+    <div class="modal-card">
+      <h3 id="modalProductName">Product Name</h3>
+      <p id="modalStockInfo" class="stock-info"></p>
+      
+      <div class="modal-unit-toggle">
+        <button class="unit-btn active" id="btnUnitCarton" onclick="setUnit('CARTON')">Carton</button>
+        <button class="unit-btn" id="btnUnitSpool" onclick="setUnit('SPOOL')">Spool</button>
+      </div>
+
+      <div class="counter-control">
+        <button class="btn-calc" onclick="adjustQty(-1)">-</button>
+        <span class="qty-display" id="qtyDisplay">1</span>
+        <button class="btn-calc" onclick="adjustQty(1)">+</button>
+      </div>
+
+      <!-- PRICE ADJUSTMENT FIELD (Volatile Prices) -->
+      <div class="price-override-box">
+        <label>Agreed Price Per Unit ($):</label>
+        <input type="number" id="modalPriceInput" step="0.01" class="price-input">
+        <small>Default catalog price loaded. You can change it for this sale.</small>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-confirm" onclick="addItemToDraft()">Add To Sheet</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
