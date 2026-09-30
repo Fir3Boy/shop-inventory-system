@@ -5,9 +5,15 @@ import { db } from './db';
 import catalogRouter from './routes/catalog';
 import invoicesRouter from './routes/invoices';
 import partiesRouter from './routes/parties';
+import reportsRouter from './routes/reports';
+
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Register reports gateway
+app.use('/api/reports', reportsRouter);
 
 // Standard Middlewares
 app.use(express.json());

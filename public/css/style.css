@@ -67,3 +67,254 @@ body { background: #f1f5f9; height: 100vh; display: flex; flex-direction: column
 .modal-actions { display: flex; gap: 10px; }
 .btn-confirm { flex: 1; padding: 12px; background: #16a34a; color: white; border: none; border-radius: 4px; font-weight: 700; cursor: pointer; }
 .btn-cancel { flex: 1; padding: 12px; background: #dc2626; color: white; border: none; border-radius: 4px; font-weight: 700; cursor: pointer; }
+/* =====================================================================
+   OFFLINE PRINT & PDF STYLES
+   ===================================================================== */
+@media print {
+  /* 1. Hide navigation bars, filter dropdowns, and export buttons */
+  .app-header, .filter-card, .btn-export, .nav-tabs {
+    display: none !important;
+  }
+
+  /* 2. Expand report to full standard A4 paper dimensions */
+  body, .page-container, .full-page-scroll {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* 3. High-contrast, clean print table */
+  .data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .data-table th, .data-table td {
+    border: 1px solid #333 !important;
+    padding: 6px 8px !important;
+    font-size: 10pt !important;
+  }
+
+  .data-table th {
+    background-color: #eee !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Repeat table headers if report spans multiple pages */
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+}
+/* =====================================================================
+   REPORTING SYSTEM & KPI CARDS
+   ===================================================================== */
+.report-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.report-type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.report-tab-btn {
+  padding: 10px 18px;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #475569;
+}
+
+.report-tab-btn.active {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+
+/* Filter Card */
+.filter-card {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.btn-preset {
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.btn-preset:hover {
+  background: #e2e8f0;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-group label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.filter-group input, .filter-group select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+/* KPI Cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.kpi-card {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.kpi-value.profit {
+  color: #16a34a;
+}
+
+.kpi-value.sales {
+  color: #2563eb;
+}
+
+/* Print Banner (Visible only when printed) */
+.print-only-header {
+  display: none;
+}
+
+/* =====================================================================
+   PRINT & PDF EXPORT STYLES (window.print)
+   ===================================================================== */
+@media print {
+  body, .full-page-scroll {
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    color: #000 !important;
+  }
+
+  .app-header, .filter-card, .btn-action, .report-type-toggle, .no-print {
+    display: none !important;
+  }
+
+  .print-only-header {
+    display: block !important;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+  }
+
+  .print-only-header h1 {
+    font-size: 18pt;
+    margin-bottom: 4px;
+  }
+
+  .print-only-header p {
+    font-size: 10pt;
+    color: #333;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .kpi-card {
+    border: 1px solid #999 !important;
+    padding: 8px !important;
+    box-shadow: none !important;
+  }
+
+  .kpi-value {
+    font-size: 1.2rem !important;
+  }
+
+  .data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .data-table th, .data-table td {
+    border: 1px solid #333 !important;
+    padding: 6px !important;
+    font-size: 9pt !important;
+  }
+
+  .data-table th {
+    background: #e2e8f0 !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+}

@@ -4,7 +4,8 @@
     { title: '🛒 POS Sales', url: 'sales.html' },
     { title: '📦 Purchases (Stock IN)', url: 'purchases.html' },
     { title: '⚙️ Inventory & SKUs', url: 'inventory.html' },
-    { title: '💳 Debts & Ledger', url: 'debts.html' }
+    { title: '💳 Debts & Ledger', url: 'debts.html' },
+    { title: '📈 Reports', url: 'reports.html' } // <-- Added
   ];
 
   const currentPath = window.location.pathname.split('/').pop() || 'index.html';
