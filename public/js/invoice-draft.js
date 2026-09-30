@@ -58,6 +58,11 @@ class InvoiceDraftEngine {
       body: JSON.stringify({ partyId: this.currentParty.id, type: this.type })
     });
     this.currentDraft = await res.json();
+    
+    // Clear notes field for the new sheet
+    const notesInput = document.getElementById('inputInvoiceNotes');
+    if (notesInput) notesInput.value = '';
+
     this.renderTable([]);
   }
 
@@ -254,12 +259,16 @@ class InvoiceDraftEngine {
     if (!confirm('Finalize and commit this invoice?')) return;
 
     const cashPaid = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
+    
+    // Read the optional notes input
+    const notesInput = document.getElementById('inputInvoiceNotes');
+    const notes = notesInput ? notesInput.value.trim() : '';
 
     btn.disabled = true;
     const res = await fetch(`/api/invoices/${this.currentDraft.id}/commit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paidAmount: cashPaid })
+      body: JSON.stringify({ paidAmount: cashPaid, notes }) // <-- Send notes
     });
 
     const data = await res.json();
