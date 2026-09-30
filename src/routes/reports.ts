@@ -3,9 +3,6 @@ import { db } from '../db';
 
 const router = Router();
 
-// =====================================================================
-// HELPER: Dynamic Filter Builder for Invoices & Catalog
-// =====================================================================
 interface ReportFilters {
   startDate?: string;
   endDate?: string;
@@ -15,11 +12,10 @@ interface ReportFilters {
   productId?: string;
 }
 
-function buildSalesWhereClause(filters: ReportFilters) {
-  const conditions: string[] = ["i.type = 'OUT'", "i.status = 'COMPLETED'"];
+function buildOptionalFilters(filters: ReportFilters) {
+  const conditions: string[] = [];
   const params: unknown[] = [];
 
-  // Date Range Filtering (Inclusive)
   if (filters.startDate) {
     conditions.push("date(i.committed_at) >= date(?)");
     params.push(filters.startDate);
@@ -28,14 +24,10 @@ function buildSalesWhereClause(filters: ReportFilters) {
     conditions.push("date(i.committed_at) <= date(?)");
     params.push(filters.endDate);
   }
-
-  // Party (Customer) Filter
   if (filters.partyId) {
     conditions.push("i.party_id = ?");
     params.push(filters.partyId);
   }
-
-  // Drill-Down Filters
   if (filters.categoryId) {
     conditions.push("b.category_id = ?");
     params.push(filters.categoryId);
@@ -44,20 +36,12 @@ function buildSalesWhereClause(filters: ReportFilters) {
     conditions.push("p.brand_id = ?");
     params.push(filters.brandId);
   }
-  if (filters.productId) {
-    conditions.push("ii.product_id = ?");
-    params.push(filters.productId);
-  }
 
-  return {
-    whereSql: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
-    params
-  };
+  const extraSql = conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '';
+  return { extraSql, params };
 }
 
-// =====================================================================
 // GATE 1: Sales & Profitability Report
-// =====================================================================
 router.get('/sales', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters: ReportFilters = {
@@ -69,26 +53,24 @@ router.get('/sales', async (req: Request, res: Response, next: NextFunction) => 
       productId: req.query.productId as string,
     };
 
-    const { whereSql, params } = buildSalesWhereClause(filters);
+    const { extraSql, params } = buildOptionalFilters(filters);
 
-    // 1. Fetch Aggregates (Top-level KPI metrics)
     const summarySql = `
       SELECT 
         COUNT(DISTINCT i.id) AS total_invoices,
         COALESCE(SUM(ii.line_total), 0) AS gross_sales,
         COALESCE(SUM(ii.base_quantity_spools), 0) AS total_spools_sold,
-        -- Calculated Cost: base spools * cost price at that time
         COALESCE(SUM(ii.base_quantity_spools * p.cost_price_spool), 0) AS total_cost,
         COALESCE(SUM(ii.line_total - (ii.base_quantity_spools * p.cost_price_spool)), 0) AS gross_profit
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
       JOIN products p ON ii.product_id = p.id
       JOIN brands b ON p.brand_id = b.id
-      ${whereSql}
+      WHERE i.type = 'OUT' AND i.status = 'COMPLETED'
+      ${extraSql}
     `;
     const summary = await db.get(summarySql, params);
 
-    // 2. Fetch Detailed Line Items for the Table
     const detailsSql = `
       SELECT 
         i.invoice_number,
@@ -107,25 +89,21 @@ router.get('/sales', async (req: Request, res: Response, next: NextFunction) => 
       JOIN parties pt ON i.party_id = pt.id
       JOIN products p ON ii.product_id = p.id
       JOIN brands b ON p.brand_id = b.id
-      ${whereSql}
+      WHERE i.type = 'OUT' AND i.status = 'COMPLETED'
+      ${extraSql}
       ORDER BY i.committed_at DESC, ii.id DESC
     `;
     const rows = await db.all(detailsSql, params);
 
     res.json({
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        filtersApplied: filters
-      },
+      metadata: { generatedAt: new Date().toISOString(), filtersApplied: filters },
       summary,
       rows
     });
   } catch (err) { next(err); }
 });
 
-// =====================================================================
-// GATE 2: Inventory Valuation & Low Stock Report
-// =====================================================================
+// GATE 2: Inventory Valuation & Asset Health
 router.get('/inventory-valuation', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const rows = await db.all(`
@@ -159,55 +137,4 @@ router.get('/inventory-valuation', async (_req: Request, res: Response, next: Ne
   } catch (err) { next(err); }
 });
 
-// Define interface for database row
-interface PartyBalanceRow {
-  id: number;
-  name: string;
-  phone: string | null;
-  current_balance: number;
-}
-
-// =====================================================================
-// GATE 3: Debts & Receivables Aging Report
-// =====================================================================
-router.get('/debts-summary', async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    // 1. Pass <PartyBalanceRow> to db.all
-    const customers = await db.all<PartyBalanceRow>(`
-      SELECT id, name, phone, current_balance 
-      FROM parties 
-      WHERE type = 'CUSTOMER' AND current_balance > 0 
-      ORDER BY current_balance DESC
-    `);
-
-    const suppliers = await db.all<PartyBalanceRow>(`
-      SELECT id, name, phone, current_balance 
-      FROM parties 
-      WHERE type = 'SUPPLIER' AND current_balance < 0 
-      ORDER BY current_balance ASC
-    `);
-
-    // 2. Explicitly type the accumulator as `number`
-    const totalReceivable = customers.reduce(
-      (acc: number, c: PartyBalanceRow) => acc + c.current_balance, 
-      0
-    );
-
-    const rawSupplierDebt = suppliers.reduce(
-      (acc: number, s: PartyBalanceRow) => acc + s.current_balance, 
-      0
-    );
-
-    res.json({
-      customers: {
-        totalReceivable,
-        list: customers
-      },
-      suppliers: {
-        totalPayable: Math.abs(rawSupplierDebt),
-        list: suppliers
-      }
-    });
-  } catch (err) { next(err); }
-});
 export default router;

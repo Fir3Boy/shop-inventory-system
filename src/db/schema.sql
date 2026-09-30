@@ -49,9 +49,14 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS parties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL CHECK (type IN ('CUSTOMER', 'SUPPLIER')),
-    name TEXT NOT NULL,
-    phone TEXT,
+    name TEXT NOT NULL,                         -- Contact Person (e.g., Haji Tariq)
+    shop_name TEXT,                             -- Business/Shop (e.g., Al-Madina Boutique)
+    phone TEXT,                                 -- Primary Calling Phone
+    secondary_phone TEXT,                       -- WhatsApp / Alternate Number
+    city TEXT,                                  -- City / Wholesale Market (e.g., Lahore, Azam Market)
     address TEXT,
+    credit_limit REAL NOT NULL DEFAULT 0.0,     -- Max credit before alert ($0 = No Limit)
+    notes TEXT,                                 -- Special terms, bank details, or delivery notes
     -- Running balance: Positive = they owe us; Negative = we owe them
     current_balance REAL NOT NULL DEFAULT 0.0,
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Supplier Payables - Textile ERP</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <div class="report-header-row no-print">
+      <div>
+        <h2>Supplier Payables (Mills & Importers)</h2>
+        <p style="color:#64748b; font-size:0.9rem;">Track balances owed to fabric mills and log payments made to vendors.</p>
+      </div>
+      <button class="btn-action" style="background:#0f172a;" onclick="window.print()">
+        🖨️ Print Payables List
+      </button>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-left: 4px solid #dc2626;">
+        <div class="kpi-label">Total Debt You Owe Mills (Payables)</div>
+        <div class="kpi-value" style="color:#dc2626;" id="txtTotalPayable">$0.00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Mills / Suppliers Pending Payment</div>
+        <div class="kpi-value" id="txtSupplierCount">0</div>
+      </div>
+    </div>
+
+    <!-- Suppliers Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Supplier / Mill Name</th>
+              <th>Phone</th>
+              <th>Address</th>
+              <th>Amount You Owe</th>
+              <th class="no-print" style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="suppliersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Supplier Statement & Payout Modal -->
+  <div class="modal-overlay" id="supplierLedgerModal">
+    <div class="modal-content" style="width: 650px; text-align: left;">
+      <h3 id="modalSupplierTitle">Supplier Statement</h3>
+      
+      <div style="max-height: 250px; overflow-y: auto; margin: 16px 0; border: 1px solid #e2e8f0;">
+        <table class="data-table">
+          <thead>
+            <tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Bal After</th></tr>
+          </thead>
+          <tbody id="modalSupplierLogs"></tbody>
+        </table>
+      </div>
+
+      <!-- Quick Payout Form -->
+      <form onsubmit="handleSupplierPayment(event)" style="background:#f8fafc; padding: 12px; border-radius: 6px; border:1px solid #cbd5e1;">
+        <input type="hidden" id="payoutSupplierId">
+        <label style="font-weight:700; font-size:0.85rem; color:#0f172a;">Record Payment Sent to Supplier ($):</label>
+        
+        <div style="display:flex; gap: 8px; margin-top: 6px;">
+          <input type="number" id="payoutAmount" step="0.01" placeholder="Amount paid" required 
+                 style="flex:1; padding:10px; font-weight:700; font-size:1.1rem; border:1px solid #94a3b8; border-radius:4px;">
+          <input type="text" id="payoutNote" placeholder="Check #, Bank, or Cash Ref" 
+                 style="flex:1.5; padding:10px; border:1px solid #94a3b8; border-radius:4px;">
+          <button type="submit" class="btn-confirm" style="flex:initial; padding: 10px 16px; background:#7c3aed;">
+            ✓ Record Payout
+          </button>
+        </div>
+      </form>
+
+      <div style="margin-top: 14px; text-align: right;">
+        <button class="btn-cancel" onclick="closeSupplierModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/supplier-debts.js"></script>
+</body>
+</html>

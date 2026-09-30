@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Customer Debts & Receivables - Textile ERP</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <div class="report-header-row no-print">
+      <div>
+        <h2>Customer Receivables (Khaata)</h2>
+        <p style="color:#64748b; font-size:0.9rem;">Track wholesale and retail credit, view statements, and record cash collections.</p>
+      </div>
+      <button class="btn-action" style="background:#0f172a;" onclick="window.print()">
+        🖨️ Print Debtors List
+      </button>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-left: 4px solid #16a34a;">
+        <div class="kpi-label">Total Customer Debt Owed to You</div>
+        <div class="kpi-value profit" id="txtTotalReceivable">$0.00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Customers with Balance</div>
+        <div class="kpi-value" id="txtDebtorCount">0</div>
+      </div>
+    </div>
+
+    <!-- Debtors Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Customer Name</th>
+              <th>Phone</th>
+              <th>Address</th>
+              <th>Outstanding Debt</th>
+              <th class="no-print" style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="customersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Customer Ledger & Collection Modal -->
+  <div class="modal-overlay" id="customerLedgerModal">
+    <div class="modal-content" style="width: 650px; text-align: left;">
+      <h3 id="modalCustomerTitle">Customer Statement</h3>
+      
+      <!-- Transaction Statement Table -->
+      <div style="max-height: 250px; overflow-y: auto; margin: 16px 0; border: 1px solid #e2e8f0;">
+        <table class="data-table">
+          <thead>
+            <tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th><th>Bal After</th></tr>
+          </thead>
+          <tbody id="modalLedgerLogs"></tbody>
+        </table>
+      </div>
+
+      <!-- Quick Cash Collection Form -->
+      <form onsubmit="handleCustomerPayment(event)" style="background:#f8fafc; padding: 12px; border-radius: 6px; border:1px solid #cbd5e1;">
+        <input type="hidden" id="collectCustomerId">
+        <label style="font-weight:700; font-size:0.85rem; color:#0f172a;">Collect Cash from Customer ($):</label>
+        
+        <div style="display:flex; gap: 8px; margin-top: 6px;">
+          <input type="number" id="collectAmount" step="0.01" placeholder="Amount received" required 
+                 style="flex:1; padding:10px; font-weight:700; font-size:1.1rem; border:1px solid #94a3b8; border-radius:4px;">
+          <input type="text" id="collectNote" placeholder="Optional note" 
+                 style="flex:1.5; padding:10px; border:1px solid #94a3b8; border-radius:4px;">
+          <button type="submit" class="btn-confirm" style="flex:initial; padding: 10px 16px;">
+            ✓ Settle Cash
+          </button>
+        </div>
+      </form>
+
+      <div style="margin-top: 14px; text-align: right;">
+        <button class="btn-cancel" onclick="closeCustomerModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/customer-debts.js"></script>
+</body>
+</html>

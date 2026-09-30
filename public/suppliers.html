@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Suppliers & Mills Directory - Textile ERP</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <div class="report-header-row no-print">
+      <div>
+        <h2>Supplier & Mill Management</h2>
+        <p style="color:#64748b; font-size:0.9rem;">Register fabric mills, thread manufacturers, store bank details, and track liabilities.</p>
+      </div>
+    </div>
+
+    <div class="admin-grid" style="grid-template-columns: 380px 1fr; align-items: start;">
+      
+      <!-- 1. Supplier Registration Form -->
+      <div class="card">
+        <h2>➕ Register New Supplier / Mill</h2>
+        <form onsubmit="handleCreateSupplier(event)">
+          
+          <label>Company / Mill Name:</label>
+          <input type="text" id="supShopName" placeholder="e.g. Kohinoor Textile Mills Ltd">
+
+          <label>Contact Person / Mill Rep *:</label>
+          <input type="text" id="supName" placeholder="e.g. Mr. Kamran" required>
+
+          <div class="row-fields">
+            <div>
+              <label>Office Phone:</label>
+              <input type="text" id="supPhone" placeholder="042-3587000">
+            </div>
+            <div>
+              <label>WhatsApp / Mobile:</label>
+              <input type="text" id="supSecondaryPhone" placeholder="0300-9876543">
+            </div>
+          </div>
+
+          <label>City / Industrial Hub:</label>
+          <input type="text" id="supCity" placeholder="e.g. Faisalabad / Karachi">
+
+          <label>Mill / Warehouse Address:</label>
+          <input type="text" id="supAddress" placeholder="Gate #, Industrial Area, Road">
+
+          <label>Initial Balance You Owe Mill ($):</label>
+          <input type="number" id="supOpeningOwed" step="0.01" value="0.00" title="Existing balance owed prior to computer system">
+
+          <label>Bank Account / Wire Info / Terms:</label>
+          <input type="text" id="supNotes" placeholder="e.g. HBL IBAN PK99... / Friday Cheque">
+
+          <button type="submit" class="btn-action" style="margin-top: 10px; background:#7c3aed;">
+            Save Supplier
+          </button>
+        </form>
+      </div>
+
+      <!-- 2. Suppliers Directory Table & Search -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding: 16px; background:#f8fafc; border-bottom: 1px solid #e2e8f0; display:flex; gap: 12px; align-items:center;">
+          <input type="text" id="searchSupplierInput" oninput="filterSupplierList()" 
+                 placeholder="🔍 Search by mill name, contact person, phone, or city..." 
+                 style="flex:1; padding:10px; border:1px solid #cbd5e1; border-radius:4px; font-size:1rem;">
+          <span id="supCountBadge" style="font-weight:700; color:#64748b; font-size:0.9rem;">Total: 0</span>
+        </div>
+
+        <div class="table-wrapper" style="max-height: 600px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Mill / Company</th>
+                <th>Rep Contact & WA</th>
+                <th>City / Hub</th>
+                <th>Bank & Payment Terms</th>
+                <th>Amount You Owe</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="suppliersDirectoryBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/suppliers.js"></script>
+</body>
+</html>

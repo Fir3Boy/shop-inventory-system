@@ -2,103 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Business Reports - Textile ERP</title>
+  <title>Reports Directory - Textile ERP</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="full-page-scroll">
+    <h1 style="margin-bottom: 8px;">Business Reports Directory</h1>
+    <p style="color: #64748b; margin-bottom: 24px;">Select a report to view analytics, filter records, or print official statements.</p>
 
-    <!-- Print Only Document Header -->
-    <div class="print-only-header">
-      <h1>Textile Store - Official Report</h1>
-      <p id="printMetaDetails">Generated on: </p>
+    <div class="admin-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      
+      <!-- Card 1: Sales -->
+<div class="card" onclick="location.href='/reports/sales.html'" style="cursor:pointer; border-left: 5px solid #2563eb;">
+  <h2>💰 Sales & Profitability</h2>
+  <p style="color:#64748b; margin-bottom: 16px;">Track revenue, cost of goods sold, profit margins, and volume by date range.</p>
+  <span style="color:#2563eb; font-weight:700; font-size:0.9rem;">Open Sales Report &rarr;</span>
+</div>
+
+<!-- Card 2: Inventory Valuation -->
+<div class="card" onclick="location.href='/reports/inventory.html'" style="cursor:pointer; border-left: 5px solid #16a34a;">
+  <h2>📦 Inventory Valuation</h2>
+  <p style="color:#64748b; margin-bottom: 16px;">Calculate total shop asset worth at cost vs. expected retail value across all active SKUs.</p>
+  <span style="color:#16a34a; font-weight:700; font-size:0.9rem;">Open Valuation Report &rarr;</span>
+</div>
+
     </div>
-
-    <!-- Header Actions -->
-    <div class="report-header-row no-print">
-      <h2>Business Analytics & Reports</h2>
-      <button class="btn-action" style="background:#0f172a;" onclick="window.print()">
-        🖨️ Print / Save as PDF
-      </button>
-    </div>
-
-    <!-- Report Type Switcher -->
-    <div class="report-type-toggle no-print">
-      <button class="report-tab-btn active" id="btnTabSales" onclick="switchReport('sales')">
-        💰 Sales & Profitability
-      </button>
-      <button class="report-tab-btn" id="btnTabInventory" onclick="switchReport('inventory')">
-        📦 Inventory Valuation
-      </button>
-      <button class="report-tab-btn" id="btnTabDebts" onclick="switchReport('debts')">
-        💳 Debt Aging & Receivables
-      </button>
-    </div>
-
-    <!-- Filter Card (Sales Report Specific) -->
-    <div class="filter-card no-print" id="salesFilterCard">
-      <!-- Quick Date Presets -->
-      <div class="preset-buttons">
-        <span style="font-size:0.85rem; font-weight:700; align-self:center; margin-right:4px;">Date Range:</span>
-        <button class="btn-preset" onclick="setPreset('today')">Today</button>
-        <button class="btn-preset" onclick="setPreset('week')">This Week</button>
-        <button class="btn-preset" onclick="setPreset('month')">This Month</button>
-        <button class="btn-preset" onclick="setPreset('all')">All Time</button>
-      </div>
-
-      <!-- Controls -->
-      <div class="filter-grid">
-        <div class="filter-group">
-          <label>Start Date:</label>
-          <input type="date" id="filterStartDate">
-        </div>
-
-        <div class="filter-group">
-          <label>End Date:</label>
-          <input type="date" id="filterEndDate">
-        </div>
-
-        <div class="filter-group">
-          <label>Customer:</label>
-          <select id="filterCustomerSelect">
-            <option value="">-- All Customers --</option>
-          </select>
-        </div>
-
-        <div class="filter-group">
-          <label>Category:</label>
-          <select id="filterCategorySelect" onchange="onCategoryFilterChange()">
-            <option value="">-- All Categories --</option>
-          </select>
-        </div>
-
-        <div class="filter-group">
-          <label>Brand:</label>
-          <select id="filterBrandSelect">
-            <option value="">-- All Brands --</option>
-          </select>
-        </div>
-
-        <button class="btn-action" onclick="loadActiveReport()">🔍 Run Report</button>
-      </div>
-    </div>
-
-    <!-- KPI Summary Cards Container -->
-    <div class="kpi-grid" id="kpiContainer"></div>
-
-    <!-- Report Data Table -->
-    <div class="card" style="padding:0; overflow:hidden;">
-      <div class="table-wrapper">
-        <table class="data-table" id="reportTable">
-          <thead id="reportTableHead"></thead>
-          <tbody id="reportTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
 
   <script src="js/nav.js"></script>
-  <script src="js/reports.js"></script>
 </body>
 </html>

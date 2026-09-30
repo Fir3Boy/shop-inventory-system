@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Customer Directory - Textile ERP</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <div class="report-header-row no-print">
+      <div>
+        <h2>Customer Management & Directory</h2>
+        <p style="color:#64748b; font-size:0.9rem;">Add wholesale clients, set credit limits, and maintain contact books.</p>
+      </div>
+    </div>
+
+    <div class="admin-grid" style="grid-template-columns: 380px 1fr; align-items: start;">
+      
+      <!-- 1. Customer Registration Form -->
+      <div class="card">
+        <h2>➕ Register New Customer</h2>
+        <form onsubmit="handleCreateCustomer(event)">
+          
+          <label>Contact Person Name *:</label>
+          <input type="text" id="custName" placeholder="e.g. Haji Tariq" required>
+
+          <label>Shop / Business Name:</label>
+          <input type="text" id="custShopName" placeholder="e.g. Al-Madina Boutique">
+
+          <div class="row-fields">
+            <div>
+              <label>Calling Phone:</label>
+              <input type="text" id="custPhone" placeholder="0300-1234567">
+            </div>
+            <div>
+              <label>WhatsApp / Alt:</label>
+              <input type="text" id="custSecondaryPhone" placeholder="0321-9876543">
+            </div>
+          </div>
+
+          <div class="row-fields">
+            <div>
+              <label>City / Market:</label>
+              <input type="text" id="custCity" placeholder="e.g. Azam Market">
+            </div>
+            <div>
+              <label>Credit Limit ($):</label>
+              <input type="number" id="custCreditLimit" step="100" value="0.00" title="0 means unlimited">
+            </div>
+          </div>
+
+          <label>Shop Address:</label>
+          <input type="text" id="custAddress" placeholder="Shop #, Plaza, Street">
+
+          <label>Previous Opening Balance ($):</label>
+          <input type="number" id="custOpeningBalance" step="0.01" value="0.00" title="Existing debt prior to system installation">
+
+          <label>Special Terms / Notes:</label>
+          <input type="text" id="custNotes" placeholder="e.g. 15-day credit cycle, VIP buyer">
+
+          <button type="submit" class="btn-action" style="margin-top: 10px;">Save Customer</button>
+        </form>
+      </div>
+
+      <!-- 2. Customer Directory List & Search -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding: 16px; background:#f8fafc; border-bottom: 1px solid #e2e8f0; display:flex; gap: 12px; align-items:center;">
+          <input type="text" id="searchCustomerInput" oninput="filterCustomerList()" 
+                 placeholder="🔍 Search by person name, shop name, phone, or market..." 
+                 style="flex:1; padding:10px; border:1px solid #cbd5e1; border-radius:4px; font-size:1rem;">
+          <span id="custCountBadge" style="font-weight:700; color:#64748b; font-size:0.9rem;">Total: 0</span>
+        </div>
+
+        <div class="table-wrapper" style="max-height: 600px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Customer / Business</th>
+                <th>Contact & WhatsApp</th>
+                <th>Market / City</th>
+                <th>Credit Limit</th>
+                <th>Current Balance</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="customersDirectoryBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="js/nav.js"></script>
+  <script src="js/customers.js"></script>
+</body>
+</html>

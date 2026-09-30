@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Inventory Valuation Report - Textile ERP</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <div class="print-only-header">
+      <h1>Textile Store - Inventory Asset Valuation</h1>
+      <p id="printMetaDetails"></p>
+    </div>
+
+    <div class="report-header-row no-print">
+      <div style="display:flex; align-items:center; gap: 12px;">
+        <button class="btn-preset" onclick="location.href='/reports.html'">&larr; Back to Directory</button>
+        <h2>Inventory Asset Valuation</h2>
+      </div>
+      <button class="btn-action" style="background:#0f172a;" onclick="window.print()">
+        🖨️ Print / Save as PDF
+      </button>
+    </div>
+
+    <!-- Valuation Metrics -->
+    <div class="kpi-grid" id="invKpis"></div>
+
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Product Name</th>
+              <th>Category & Brand</th>
+              <th>Current Physical Stock</th>
+              <th>Cost / Spool</th>
+              <th>Asset Cost Value</th>
+            </tr>
+          </thead>
+          <tbody id="invTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/nav.js"></script>
+  <script src="/js/reports/inventory.js"></script>
+</body>
+</html>

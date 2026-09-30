@@ -6,11 +6,19 @@ import catalogRouter from './routes/catalog';
 import invoicesRouter from './routes/invoices';
 import partiesRouter from './routes/parties';
 import reportsRouter from './routes/reports';
+import customersRouter from './routes/customers';
+import suppliersRouter from './routes/suppliers';
+
+
 
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Mount domain routes
+app.use('/api/customers', customersRouter);
+app.use('/api/suppliers', suppliersRouter);
 
 // Register reports gateway
 app.use('/api/reports', reportsRouter);
