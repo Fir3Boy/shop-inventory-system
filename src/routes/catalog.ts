@@ -116,5 +116,61 @@ router.patch('/products/:id/toggle-status', async (req: Request, res: Response, 
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+// 1. Update Product Details (Prices, Name, SKU, Ratio)
+router.put('/products/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const productId = req.params.id;
+    const {
+      sku,
+      name,
+      spoolsPerCarton,
+      costPriceSpool,
+      retailPriceSpool,
+      wholesalePriceCarton
+    } = req.body;
+
+    if (!sku || !name || !spoolsPerCarton) {
+      return res.status(400).json({ error: 'SKU, Product Name, and Spools/Carton ratio are required.' });
+    }
+
+    // Check SKU uniqueness (excluding this product)
+    const existing = await db.get(
+      'SELECT id FROM products WHERE sku = ? AND id != ?',
+      [sku.trim().toUpperCase(), productId]
+    );
+    if (existing) {
+      return res.status(400).json({ error: `SKU "${sku}" is already assigned to another product.` });
+    }
+
+    await db.run(
+      `UPDATE products 
+       SET sku = ?, name = ?, spools_per_carton = ?, cost_price_spool = ?, 
+           retail_price_spool = ?, wholesale_price_carton = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        sku.trim().toUpperCase(),
+        name.trim(),
+        Number(spoolsPerCarton),
+        Number(costPriceSpool) || 0,
+        Number(retailPriceSpool) || 0,
+        Number(wholesalePriceCarton) || 0,
+        productId
+      ]
+    );
+
+    res.json({ success: true, message: 'Product updated successfully.' });
+  } catch (err) { next(err); }
+});
+
+// 2. Soft-Delete / Toggle Product Status (Activate / Deactivate)
+router.patch('/products/:id/toggle', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await db.run(
+      'UPDATE products SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?',
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
 
 export default router;

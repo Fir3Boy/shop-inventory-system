@@ -26,14 +26,31 @@ class InvoiceDraftEngine {
     this.setupModalControls();
   }
 
-  async loadParties() {
+async loadParties() {
     const filter = this.type === 'OUT' ? 'CUSTOMER' : 'SUPPLIER';
     const res = await fetch(`/api/parties?type=${filter}`);
     this.partiesList = await res.json();
 
-    this.partySelect.innerHTML = this.partiesList.map(p => 
-      `<option value="${p.id}">${p.name} (Bal: $${p.current_balance.toFixed(2)})</option>`
-    ).join('');
+    this.partySelect.innerHTML = this.partiesList.map(p => {
+      let displayName = '';
+
+      if (this.type === 'OUT') {
+        // Customer: "🏪 Shop Name (Contact Person)"
+        displayName = p.shop_name 
+          ? `🏪 ${p.shop_name} (${p.name})` 
+          : `👤 ${p.name}`;
+
+        return `<option value="${p.id}">${displayName} &nbsp;—&nbsp; Debt: $${p.current_balance.toFixed(2)}</option>`;
+      } else {
+        // Supplier: "🏭 Mill / Company (Rep Name)"
+        displayName = p.shop_name 
+          ? `🏭 ${p.shop_name} (Rep: ${p.name})` 
+          : `👤 ${p.name}`;
+
+        const owed = p.current_balance < 0 ? Math.abs(p.current_balance) : 0;
+        return `<option value="${p.id}">${displayName} &nbsp;—&nbsp; Owed: $${owed.toFixed(2)}</option>`;
+      }
+    }).join('');
 
     await this.handlePartyChange();
   }
@@ -43,7 +60,13 @@ class InvoiceDraftEngine {
     this.currentParty = this.partiesList.find(p => p.id === partyId) || null;
 
     if (this.txtOldBalance && this.currentParty) {
-      this.txtOldBalance.innerText = `$${this.currentParty.current_balance.toFixed(2)}`;
+      if (this.type === 'OUT') {
+        this.txtOldBalance.innerText = `$${this.currentParty.current_balance.toFixed(2)}`;
+      } else {
+        // Supplier: Show absolute amount owed clearly without confusing negative signs
+        const owed = this.currentParty.current_balance < 0 ? Math.abs(this.currentParty.current_balance) : 0;
+        this.txtOldBalance.innerText = `$${owed.toFixed(2)}`;
+      }
     }
 
     await this.createNewDraft();

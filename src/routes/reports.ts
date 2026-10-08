@@ -137,4 +137,264 @@ router.get('/inventory-valuation', async (_req: Request, res: Response, next: Ne
   } catch (err) { next(err); }
 });
 
+// =====================================================================
+// GATE 4: SKU Movements & Stock Card (IN and OUT Ledger)
+// =====================================================================
+router.get('/sku-movements', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const {
+      startDate,
+      endDate,
+      movementType, // 'ALL', 'IN', 'OUT'
+      categoryId,
+      brandId,
+      productId
+    } = req.query;
+
+    const conditions: string[] = ["i.status = 'COMPLETED'"];
+    const params: unknown[] = [];
+
+    if (startDate) {
+      conditions.push("date(i.committed_at) >= date(?)");
+      params.push(startDate);
+    }
+    if (endDate) {
+      conditions.push("date(i.committed_at) <= date(?)");
+      params.push(endDate);
+    }
+    if (movementType && movementType !== 'ALL') {
+      conditions.push("i.type = ?");
+      params.push(movementType);
+    }
+    if (productId) {
+      conditions.push("ii.product_id = ?");
+      params.push(productId);
+    }
+    if (brandId) {
+      conditions.push("p.brand_id = ?");
+      params.push(brandId);
+    }
+    if (categoryId) {
+      conditions.push("b.category_id = ?");
+      params.push(categoryId);
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    // 1. Calculate KPI Metrics (Inward vs Outward volumes)
+    const summarySql = `
+      SELECT 
+        COUNT(ii.id) AS total_movements,
+        COALESCE(SUM(CASE WHEN i.type = 'IN' THEN ii.base_quantity_spools ELSE 0 END), 0) AS total_in_spools,
+        COALESCE(SUM(CASE WHEN i.type = 'OUT' THEN ii.base_quantity_spools ELSE 0 END), 0) AS total_out_spools,
+        COALESCE(SUM(CASE WHEN i.type = 'IN' THEN ii.line_total ELSE 0 END), 0) AS total_in_cost,
+        COALESCE(SUM(CASE WHEN i.type = 'OUT' THEN ii.line_total ELSE 0 END), 0) AS total_out_revenue
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      JOIN products p ON ii.product_id = p.id
+      JOIN brands b ON p.brand_id = b.id
+      ${whereClause}
+    `;
+    const summary = await db.get(summarySql, params);
+
+    // 2. Fetch Detailed Audit Trail
+    const detailsSql = `
+      SELECT 
+        ii.id,
+        i.invoice_number,
+        i.notes AS invoice_ref,
+        i.type AS movement_type,
+        date(i.committed_at) AS move_date,
+        pt.name AS party_name,
+        pt.type AS party_type,
+        p.name AS product_name,
+        p.sku,
+        p.spools_per_carton,
+        b.name AS brand_name,
+        ii.unit,
+        ii.quantity,
+        ii.base_quantity_spools,
+        ii.unit_price,
+        ii.line_total
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      JOIN parties pt ON i.party_id = pt.id
+      JOIN products p ON ii.product_id = p.id
+      JOIN brands b ON p.brand_id = b.id
+      ${whereClause}
+      ORDER BY i.committed_at DESC, ii.id DESC
+    `;
+    const rows = await db.all(detailsSql, params);
+
+    res.json({ summary, rows });
+  } catch (err) { next(err); }
+});
+// =====================================================================
+// GATE 5: Customer Activity & Sales History Report
+// =====================================================================
+router.get('/customer-activity', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate, customerId, categoryId, brandId, productId } = req.query;
+
+    const conditions: string[] = ["i.type = 'OUT'", "i.status = 'COMPLETED'"];
+    const params: unknown[] = [];
+
+    if (startDate) {
+      conditions.push("date(i.committed_at) >= date(?)");
+      params.push(startDate);
+    }
+    if (endDate) {
+      conditions.push("date(i.committed_at) <= date(?)");
+      params.push(endDate);
+    }
+    if (customerId) {
+      conditions.push("i.party_id = ?");
+      params.push(customerId);
+    }
+    if (productId) {
+      conditions.push("ii.product_id = ?");
+      params.push(productId);
+    }
+    if (brandId) {
+      conditions.push("p.brand_id = ?");
+      params.push(brandId);
+    }
+    if (categoryId) {
+      conditions.push("b.category_id = ?");
+      params.push(categoryId);
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    // 1. KPI Aggregates
+    const summarySql = `
+      SELECT 
+        COUNT(DISTINCT i.id) AS total_invoices,
+        COUNT(ii.id) AS total_items_count,
+        COALESCE(SUM(ii.base_quantity_spools), 0) AS total_spools_sold,
+        COALESCE(SUM(ii.line_total), 0) AS total_amount_billed
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      JOIN parties pt ON i.party_id = pt.id
+      JOIN products p ON ii.product_id = p.id
+      JOIN brands b ON p.brand_id = b.id
+      ${whereClause}
+    `;
+    const summary = await db.get(summarySql, params);
+
+    // 2. Item-by-item breakdown
+    const detailsSql = `
+      SELECT 
+        ii.id,
+        date(i.committed_at) AS sale_date,
+        i.invoice_number,
+        i.notes AS invoice_ref,
+        pt.name AS customer_name,
+        pt.shop_name AS customer_shop,
+        p.name AS product_name,
+        p.sku,
+        b.name AS brand_name,
+        ii.unit,
+        ii.quantity,
+        ii.base_quantity_spools,
+        ii.unit_price,
+        ii.line_total
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      JOIN parties pt ON i.party_id = pt.id
+      JOIN products p ON ii.product_id = p.id
+      JOIN brands b ON p.brand_id = b.id
+      ${whereClause}
+      ORDER BY i.committed_at DESC, ii.id DESC
+    `;
+    const rows = await db.all(detailsSql, params);
+
+    res.json({ summary, rows });
+  } catch (err) { next(err); }
+});
+
+// =====================================================================
+// GATE 6: Supplier Activity & Inward Consignment Report
+// =====================================================================
+router.get('/supplier-activity', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate, supplierId, categoryId, brandId, productId } = req.query;
+
+    const conditions: string[] = ["i.type = 'IN'", "i.status = 'COMPLETED'"];
+    const params: unknown[] = [];
+
+    if (startDate) {
+      conditions.push("date(i.committed_at) >= date(?)");
+      params.push(startDate);
+    }
+    if (endDate) {
+      conditions.push("date(i.committed_at) <= date(?)");
+      params.push(endDate);
+    }
+    if (supplierId) {
+      conditions.push("i.party_id = ?");
+      params.push(supplierId);
+    }
+    if (productId) {
+      conditions.push("ii.product_id = ?");
+      params.push(productId);
+    }
+    if (brandId) {
+      conditions.push("p.brand_id = ?");
+      params.push(brandId);
+    }
+    if (categoryId) {
+      conditions.push("b.category_id = ?");
+      params.push(categoryId);
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    // 1. KPI Aggregates
+    const summarySql = `
+      SELECT 
+        COUNT(DISTINCT i.id) AS total_bills,
+        COUNT(ii.id) AS total_items_count,
+        COALESCE(SUM(ii.base_quantity_spools), 0) AS total_spools_received,
+        COALESCE(SUM(ii.line_total), 0) AS total_inward_cost
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      JOIN parties pt ON i.party_id = pt.id
+      JOIN products p ON ii.product_id = p.id
+      JOIN brands b ON p.brand_id = b.id
+      ${whereClause}
+    `;
+    const summary = await db.get(summarySql, params);
+
+    // 2. Inward Line-item breakdown
+    const detailsSql = `
+      SELECT 
+        ii.id,
+        date(i.committed_at) AS purchase_date,
+        i.invoice_number,
+        i.notes AS mill_bill_ref,
+        pt.name AS rep_name,
+        pt.shop_name AS mill_name,
+        p.name AS product_name,
+        p.sku,
+        b.name AS brand_name,
+        ii.unit,
+        ii.quantity,
+        ii.base_quantity_spools,
+        ii.unit_price,
+        ii.line_total
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      JOIN parties pt ON i.party_id = pt.id
+      JOIN products p ON ii.product_id = p.id
+      JOIN brands b ON p.brand_id = b.id
+      ${whereClause}
+      ORDER BY i.committed_at DESC, ii.id DESC
+    `;
+    const rows = await db.all(detailsSql, params);
+
+    res.json({ summary, rows });
+  } catch (err) { next(err); }
+});
+
 export default router;

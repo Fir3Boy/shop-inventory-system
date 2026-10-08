@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Customer Activity & Sales History - Textile ERP</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <div class="print-only-header">
+      <h1>Textile Store - Customer Purchase & Activity Statement</h1>
+      <p id="printMetaDetails"></p>
+    </div>
+
+    <div class="report-header-row no-print">
+      <div style="display:flex; align-items:center; gap: 12px;">
+        <button class="btn-preset" onclick="location.href='/reports.html'">&larr; Back to Directory</button>
+        <h2>Customer Sales & Activity History</h2>
+      </div>
+      <button class="btn-action" style="background:#0f172a;" onclick="window.print()">
+        🖨️ Print / Save as PDF
+      </button>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="filter-card no-print">
+      <div class="preset-buttons">
+        <span style="font-size:0.85rem; font-weight:700; align-self:center; margin-right:4px;">Date Range:</span>
+        <button class="btn-preset" onclick="setPreset('today')">Today</button>
+        <button class="btn-preset" onclick="setPreset('week')">This Week</button>
+        <button class="btn-preset" onclick="setPreset('month')">This Month</button>
+        <button class="btn-preset" onclick="setPreset('all')">All Time</button>
+      </div>
+
+      <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+        <div class="filter-group">
+          <label>Start Date:</label>
+          <input type="date" id="filterStartDate">
+        </div>
+
+        <div class="filter-group">
+          <label>End Date:</label>
+          <input type="date" id="filterEndDate">
+        </div>
+
+        <div class="filter-group">
+          <label>Customer:</label>
+          <select id="filterCustomerSelect">
+            <option value="">-- All Customers --</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Category:</label>
+          <select id="filterCategorySelect" onchange="onCategoryChange()">
+            <option value="">-- All Categories --</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Brand:</label>
+          <select id="filterBrandSelect" onchange="onBrandChange()">
+            <option value="">-- All Brands --</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Specific Product:</label>
+          <select id="filterProductSelect">
+            <option value="">-- All Products --</option>
+          </select>
+        </div>
+
+        <button class="btn-action" onclick="fetchCustomerReport()">🔍 Run Report</button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="kpi-grid" id="customerKpis"></div>
+
+    <!-- Audit Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Invoice # / Ref</th>
+              <th>Customer / Shop</th>
+              <th>Product / SKU</th>
+              <th>Volume Sold</th>
+              <th>Total Spools</th>
+              <th>Unit Rate</th>
+              <th>Total Amount</th>
+            </tr>
+          </thead>
+          <tbody id="customerTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/nav.js"></script>
+  <script src="/js/reports/customer-activity.js"></script>
+</body>
+</html>

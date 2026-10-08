@@ -95,5 +95,55 @@
 
   <script src="js/nav.js"></script>
   <script src="js/customers.js"></script>
+<!-- Customer Edit Modal -->
+  <div class="modal-overlay" id="editCustomerModal">
+    <div class="modal-content" style="width: 480px; text-align: left;">
+      <h3>✏️ Edit Customer Profile</h3>
+      <p style="font-size:0.8rem; color:#64748b; margin-bottom: 12px;">Financial balance is protected and must be settled via Khaata.</p>
+
+      <form onsubmit="handleSaveCustomerEdit(event)">
+        <input type="hidden" id="editCustId">
+
+        <label>Contact Person Name *:</label>
+        <input type="text" id="editCustName" required style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <label>Shop / Business Name:</label>
+        <input type="text" id="editCustShopName" style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <div class="row-fields">
+          <div>
+            <label>Calling Phone:</label>
+            <input type="text" id="editCustPhone" style="width:100%; padding:8px; margin-bottom:8px;">
+          </div>
+          <div>
+            <label>WhatsApp / Alt:</label>
+            <input type="text" id="editCustSecondaryPhone" style="width:100%; padding:8px; margin-bottom:8px;">
+          </div>
+        </div>
+
+        <div class="row-fields">
+          <div>
+            <label>City / Market:</label>
+            <input type="text" id="editCustCity" style="width:100%; padding:8px; margin-bottom:8px;">
+          </div>
+          <div>
+            <label>Credit Limit ($):</label>
+            <input type="number" id="editCustCreditLimit" step="100" style="width:100%; padding:8px; margin-bottom:8px;">
+          </div>
+        </div>
+
+        <label>Address:</label>
+        <input type="text" id="editCustAddress" style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <label>Notes / Trade Terms:</label>
+        <input type="text" id="editCustNotes" style="width:100%; padding:8px; margin-bottom:12px;">
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeEditCustomerModal()">Cancel</button>
+          <button type="submit" class="btn-confirm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </body>
 </html>

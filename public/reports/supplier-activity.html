@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Supplier Consignments & Inward History - Textile ERP</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <div class="print-only-header">
+      <h1>Textile Store - Supplier Inward & Purchase Statement</h1>
+      <p id="printMetaDetails"></p>
+    </div>
+
+    <div class="report-header-row no-print">
+      <div style="display:flex; align-items:center; gap: 12px;">
+        <button class="btn-preset" onclick="location.href='/reports.html'">&larr; Back to Directory</button>
+        <h2>Supplier Inward & Purchase History</h2>
+      </div>
+      <button class="btn-action" style="background:#0f172a;" onclick="window.print()">
+        🖨️ Print / Save as PDF
+      </button>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="filter-card no-print">
+      <div class="preset-buttons">
+        <span style="font-size:0.85rem; font-weight:700; align-self:center; margin-right:4px;">Date Range:</span>
+        <button class="btn-preset" onclick="setPreset('today')">Today</button>
+        <button class="btn-preset" onclick="setPreset('week')">This Week</button>
+        <button class="btn-preset" onclick="setPreset('month')">This Month</button>
+        <button class="btn-preset" onclick="setPreset('all')">All Time</button>
+      </div>
+
+      <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+        <div class="filter-group">
+          <label>Start Date:</label>
+          <input type="date" id="filterStartDate">
+        </div>
+
+        <div class="filter-group">
+          <label>End Date:</label>
+          <input type="date" id="filterEndDate">
+        </div>
+
+        <div class="filter-group">
+          <label>Mill / Supplier:</label>
+          <select id="filterSupplierSelect">
+            <option value="">-- All Mills / Suppliers --</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Category:</label>
+          <select id="filterCategorySelect" onchange="onCategoryChange()">
+            <option value="">-- All Categories --</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Brand:</label>
+          <select id="filterBrandSelect" onchange="onBrandChange()">
+            <option value="">-- All Brands --</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Specific Product:</label>
+          <select id="filterProductSelect">
+            <option value="">-- All Products --</option>
+          </select>
+        </div>
+
+        <button class="btn-action" onclick="fetchSupplierReport()">🔍 Run Report</button>
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="kpi-grid" id="supplierKpis"></div>
+
+    <!-- Audit Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>System Invoice #</th>
+              <th>Mill Paper Bill / Bilty Ref</th>
+              <th>Mill / Supplier</th>
+              <th>Product / SKU</th>
+              <th>Quantity Received</th>
+              <th>Total Spools Inflow</th>
+              <th>Inward Cost</th>
+              <th>Total Value</th>
+            </tr>
+          </thead>
+          <tbody id="supplierTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/nav.js"></script>
+  <script src="/js/reports/supplier-activity.js"></script>
+</body>
+</html>

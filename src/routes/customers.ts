@@ -147,5 +147,47 @@ router.post('/:id/collect', async (req: Request, res: Response, next: NextFuncti
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+// 1. Update Customer Profile (Notice: current_balance is strictly excluded!)
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const customerId = req.params.id;
+    const { name, shopName, phone, secondaryPhone, city, address, creditLimit, notes } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Customer name is required.' });
+    }
+
+    await db.run(
+      `UPDATE parties 
+       SET name = ?, shop_name = ?, phone = ?, secondary_phone = ?, 
+           city = ?, address = ?, credit_limit = ?, notes = ?
+       WHERE id = ? AND type = 'CUSTOMER'`,
+      [
+        name.trim(),
+        shopName ? shopName.trim() : null,
+        phone ? phone.trim() : null,
+        secondaryPhone ? secondaryPhone.trim() : null,
+        city ? city.trim() : null,
+        address ? address.trim() : null,
+        Number(creditLimit) || 0,
+        notes ? notes.trim() : null,
+        customerId
+      ]
+    );
+
+    res.json({ success: true, message: 'Customer updated successfully.' });
+  } catch (err) { next(err); }
+});
+
+// 2. Soft-Delete / Toggle Customer Status
+router.patch('/:id/toggle', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await db.run(
+      'UPDATE parties SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ? AND type = "CUSTOMER"',
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
 
 export default router;

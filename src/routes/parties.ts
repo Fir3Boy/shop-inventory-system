@@ -4,12 +4,22 @@ import { db } from '../db';
 const router = Router();
 
 // List parties (optional query: ?type=CUSTOMER or ?type=SUPPLIER)
+// src/routes/parties.ts
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { type } = req.query;
+    
+    // Sort primarily by shop/mill name, then by person name
     const query = type 
-      ? 'SELECT * FROM parties WHERE type = ? AND is_active = 1 ORDER BY name ASC'
-      : 'SELECT * FROM parties WHERE is_active = 1 ORDER BY name ASC';
+      ? `SELECT id, name, shop_name, current_balance, type 
+         FROM parties 
+         WHERE type = ? AND is_active = 1 
+         ORDER BY COALESCE(shop_name, name) ASC`
+      : `SELECT id, name, shop_name, current_balance, type 
+         FROM parties 
+         WHERE is_active = 1 
+         ORDER BY COALESCE(shop_name, name) ASC`;
+         
     const params = type ? [type] : [];
     const rows = await db.all(query, params);
     res.json(rows);

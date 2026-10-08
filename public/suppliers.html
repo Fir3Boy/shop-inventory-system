@@ -89,5 +89,47 @@
 
   <script src="js/nav.js"></script>
   <script src="js/suppliers.js"></script>
+<!-- Supplier Edit Modal -->
+  <div class="modal-overlay" id="editSupplierModal">
+    <div class="modal-content" style="width: 480px; text-align: left;">
+      <h3>✏️ Edit Supplier / Mill Profile</h3>
+      <p style="font-size:0.8rem; color:#64748b; margin-bottom: 12px;">Financial balance is protected and must be settled via Ledger Payouts.</p>
+
+      <form onsubmit="handleSaveSupplierEdit(event)">
+        <input type="hidden" id="editSupId">
+
+        <label>Company / Mill Name:</label>
+        <input type="text" id="editSupShopName" style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <label>Contact Person / Rep *:</label>
+        <input type="text" id="editSupName" required style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <div class="row-fields">
+          <div>
+            <label>Office Phone:</label>
+            <input type="text" id="editSupPhone" style="width:100%; padding:8px; margin-bottom:8px;">
+          </div>
+          <div>
+            <label>WhatsApp / Mobile:</label>
+            <input type="text" id="editSupSecondaryPhone" style="width:100%; padding:8px; margin-bottom:8px;">
+          </div>
+        </div>
+
+        <label>City / Industrial Hub:</label>
+        <input type="text" id="editSupCity" style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <label>Address:</label>
+        <input type="text" id="editSupAddress" style="width:100%; padding:8px; margin-bottom:8px;">
+
+        <label>Bank Info / Terms / Notes:</label>
+        <input type="text" id="editSupNotes" style="width:100%; padding:8px; margin-bottom:12px;">
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeEditSupplierModal()">Cancel</button>
+          <button type="submit" class="btn-confirm" style="background:#7c3aed;">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </body>
 </html>

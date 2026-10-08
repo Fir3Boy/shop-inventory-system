@@ -147,5 +147,46 @@ router.post('/:id/pay', async (req: Request, res: Response, next: NextFunction) 
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+// 1. Update Supplier Profile (current_balance strictly excluded)
+router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const supplierId = req.params.id;
+    const { name, shopName, phone, secondaryPhone, city, address, notes } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Contact person or representative name is required.' });
+    }
+
+    await db.run(
+      `UPDATE parties 
+       SET name = ?, shop_name = ?, phone = ?, secondary_phone = ?, 
+           city = ?, address = ?, notes = ?
+       WHERE id = ? AND type = 'SUPPLIER'`,
+      [
+        name.trim(),
+        shopName ? shopName.trim() : null,
+        phone ? phone.trim() : null,
+        secondaryPhone ? secondaryPhone.trim() : null,
+        city ? city.trim() : null,
+        address ? address.trim() : null,
+        notes ? notes.trim() : null,
+        supplierId
+      ]
+    );
+
+    res.json({ success: true, message: 'Supplier updated successfully.' });
+  } catch (err) { next(err); }
+});
+
+// 2. Soft-Delete / Toggle Supplier Status
+router.patch('/:id/toggle', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await db.run(
+      'UPDATE parties SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ? AND type = "SUPPLIER"',
+      [req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
 
 export default router;

@@ -21,9 +21,9 @@ function renderCustomerTable(customers) {
   }
 
   tbody.innerHTML = customers.map(c => `
-    <tr>
+    <tr style="${c.is_active === 0 ? 'background:#f8fafc; opacity:0.6;' : ''}">
       <td>
-        <strong>${c.name}</strong>
+        <strong>${c.name}</strong> ${c.is_active === 0 ? '<span style="color:#dc2626; font-size:0.75rem;">[Deactivated]</span>' : ''}
         ${c.shop_name ? `<br><small style="color:#2563eb; font-weight:600;">🏪 ${c.shop_name}</small>` : ''}
       </td>
       <td>
@@ -36,13 +36,71 @@ function renderCustomerTable(customers) {
         $${c.current_balance.toFixed(2)}
       </td>
       <td>
-        <button class="btn-action" style="padding:6px 10px; font-size:0.8rem;" 
-                onclick="location.href='customer-debts.html'">
-          📖 Khaata
-        </button>
+        <div style="display:flex; gap:4px;">
+          <button class="btn-action" style="padding:4px 8px; font-size:0.8rem;" onclick='openEditCustomerModal(${JSON.stringify(c)})'>✏️</button>
+          <button class="btn-action" style="padding:4px 8px; font-size:0.8rem; background:${c.is_active === 1 ? '#dc2626' : '#16a34a'};" 
+                  onclick="toggleCustomerStatus(${c.id}, ${c.is_active})">
+            ${c.is_active === 1 ? '🚫' : '✓'}
+          </button>
+          <button class="btn-action" style="padding:4px 8px; font-size:0.8rem;" onclick="location.href='customer-debts.html'">📖</button>
+        </div>
       </td>
     </tr>
   `).join('');
+}
+
+function openEditCustomerModal(c) {
+  document.getElementById('editCustId').value = c.id;
+  document.getElementById('editCustName').value = c.name;
+  document.getElementById('editCustShopName').value = c.shop_name || '';
+  document.getElementById('editCustPhone').value = c.phone || '';
+  document.getElementById('editCustSecondaryPhone').value = c.secondary_phone || '';
+  document.getElementById('editCustCity').value = c.city || '';
+  document.getElementById('editCustCreditLimit').value = c.credit_limit || 0;
+  document.getElementById('editCustAddress').value = c.address || '';
+  document.getElementById('editCustNotes').value = c.notes || '';
+  document.getElementById('editCustomerModal').style.display = 'flex';
+}
+
+function closeEditCustomerModal() {
+  document.getElementById('editCustomerModal').style.display = 'none';
+}
+
+async function handleSaveCustomerEdit(e) {
+  e.preventDefault();
+  const id = document.getElementById('editCustId').value;
+  const payload = {
+    name: document.getElementById('editCustName').value,
+    shopName: document.getElementById('editCustShopName').value,
+    phone: document.getElementById('editCustPhone').value,
+    secondaryPhone: document.getElementById('editCustSecondaryPhone').value,
+    city: document.getElementById('editCustCity').value,
+    creditLimit: parseFloat(document.getElementById('editCustCreditLimit').value) || 0,
+    address: document.getElementById('editCustAddress').value,
+    notes: document.getElementById('editCustNotes').value
+  };
+
+  const res = await fetch(`/api/customers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  if (data.error) alert(data.error);
+  else {
+    alert('Customer updated successfully!');
+    closeEditCustomerModal();
+    await loadCustomerDirectory();
+  }
+}
+
+async function toggleCustomerStatus(id, currentStatus) {
+  const action = currentStatus === 1 ? 'deactivate' : 'activate';
+  if (!confirm(`Are you sure you want to ${action} this customer?`)) return;
+
+  const res = await fetch(`/api/customers/${id}/toggle`, { method: 'PATCH' });
+  if (res.ok) await loadCustomerDirectory();
 }
 
 function filterCustomerList() {
