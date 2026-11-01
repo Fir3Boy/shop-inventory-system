@@ -189,5 +189,26 @@ router.patch('/:id/toggle', async (req: Request, res: Response, next: NextFuncti
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+// 1. Get all customers (with optional search query)
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const search = req.query.search ? String(req.query.search).trim() : '';
+    let query = `SELECT * FROM parties WHERE type = 'CUSTOMER' AND is_active = 1`;
+    const params: unknown[] = [];
+
+    if (search) {
+      query += ` AND (name LIKE ? OR shop_name LIKE ? OR phone LIKE ? OR secondary_phone LIKE ? OR city LIKE ?)`;
+      const term = `%${search}%`;
+      params.push(term, term, term, term, term);
+    }
+
+    query += ` ORDER BY current_balance DESC, name ASC`;
+
+    const customers = await db.all<CustomerRow>(query, params);
+    const totalReceivable = customers.reduce((sum, c) => sum + (c.current_balance > 0 ? c.current_balance : 0), 0);
+
+    res.json({ totalReceivable, customers });
+  } catch (err) { next(err); }
+});
 
 export default router;

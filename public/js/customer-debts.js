@@ -1,3 +1,5 @@
+let allDebtors = [];
+
 window.addEventListener('DOMContentLoaded', async () => {
   await loadCustomers();
 });
@@ -5,30 +7,64 @@ window.addEventListener('DOMContentLoaded', async () => {
 async function loadCustomers() {
   const res = await fetch('/api/customers');
   const data = await res.json();
+  allDebtors = data.customers || [];
 
   document.getElementById('txtTotalReceivable').innerText = `$${data.totalReceivable.toFixed(2)}`;
   
-  const debtors = data.customers.filter(c => c.current_balance > 0);
-  document.getElementById('txtDebtorCount').innerText = debtors.length;
+  const debtorsCount = allDebtors.filter(c => c.current_balance > 0).length;
+  document.getElementById('txtDebtorCount').innerText = debtorsCount;
 
+  filterDebtorsTable();
+}
+
+function filterDebtorsTable() {
+  const query = document.getElementById('searchDebtorInput').value.toLowerCase().trim();
+  const filterStatus = document.getElementById('filterDebtorStatus').value;
+
+  const filtered = allDebtors.filter(c => {
+    // 1. Text filter across all identifiers
+    const matchesSearch = !query ||
+      (c.name && c.name.toLowerCase().includes(query)) ||
+      (c.shop_name && c.shop_name.toLowerCase().includes(query)) ||
+      (c.phone && c.phone.includes(query)) ||
+      (c.secondary_phone && c.secondary_phone.includes(query)) ||
+      (c.city && c.city.toLowerCase().includes(query));
+
+    // 2. Status balance filter
+    const matchesBalance = (filterStatus === 'DEBT_ONLY') ? c.current_balance > 0 : true;
+
+    return matchesSearch && matchesBalance;
+  });
+
+  document.getElementById('txtSearchCount').innerText = `Showing: ${filtered.length} of ${allDebtors.length}`;
+  renderCustomerRows(filtered);
+}
+
+function renderCustomerRows(customers) {
   const tbody = document.getElementById('customersTableBody');
-  if (data.customers.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#64748b;">No customers registered.</td></tr>';
+  if (!customers || customers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#64748b;">No matching customer records found.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = data.customers.map(c => `
+  tbody.innerHTML = customers.map(c => `
     <tr>
-      <td><strong>${c.name}</strong></td>
-      <td>${c.phone || '-'}</td>
-      <td><small style="color:#64748b;">${c.address || '-'}</small></td>
+      <td>
+        <strong>${c.name}</strong>
+        ${c.shop_name ? `<br><small style="color:#2563eb; font-weight:700;">🏪 ${c.shop_name}</small>` : ''}
+      </td>
+      <td>
+        📞 ${c.phone || '-'}
+        ${c.secondary_phone ? `<br><small style="color:#16a34a;">💬 WA: ${c.secondary_phone}</small>` : ''}
+      </td>
+      <td>${c.city || c.address || '-'}</td>
       <td style="font-weight:800; font-size:1.1rem; color: ${c.current_balance > 0 ? '#16a34a' : '#64748b'};">
         $${c.current_balance.toFixed(2)}
       </td>
       <td class="no-print" style="text-align:right;">
-        <button class="btn-action" style="padding:6px 12px; font-size:0.85rem;" 
+        <button class="btn-action" style="padding:8px 14px; font-size:0.9rem; font-weight:bold; background:#16a34a;" 
                 onclick="openCustomerLedger(${c.id})">
-          📖 View Statement / Collect
+          💵 Settle Cash / Statement
         </button>
       </td>
     </tr>
@@ -39,8 +75,13 @@ async function openCustomerLedger(customerId) {
   const res = await fetch(`/api/customers/${customerId}/ledger`);
   const data = await res.json();
 
+  const title = data.customer.shop_name 
+    ? `${data.customer.shop_name} (${data.customer.name})` 
+    : data.customer.name;
+
   document.getElementById('modalCustomerTitle').innerText = 
-    `${data.customer.name} (Current Debt: $${data.customer.current_balance.toFixed(2)})`;
+    `${title} — Current Debt: $${data.customer.current_balance.toFixed(2)}`;
+    
   document.getElementById('collectCustomerId').value = customerId;
   document.getElementById('collectAmount').value = '';
   document.getElementById('collectNote').value = '';
@@ -61,6 +102,8 @@ async function openCustomerLedger(customerId) {
   }
 
   document.getElementById('customerLedgerModal').style.display = 'flex';
+  // Auto-focus amount box for fast typing
+  setTimeout(() => document.getElementById('collectAmount').focus(), 100);
 }
 
 function closeCustomerModal() {

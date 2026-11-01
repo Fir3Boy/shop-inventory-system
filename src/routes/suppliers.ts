@@ -188,5 +188,26 @@ router.patch('/:id/toggle', async (req: Request, res: Response, next: NextFuncti
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+// 1. Get all suppliers (with optional search query)
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const search = req.query.search ? String(req.query.search).trim() : '';
+    let query = `SELECT * FROM parties WHERE type = 'SUPPLIER' AND is_active = 1`;
+    const params: unknown[] = [];
+
+    if (search) {
+      query += ` AND (name LIKE ? OR shop_name LIKE ? OR phone LIKE ? OR secondary_phone LIKE ? OR city LIKE ?)`;
+      const term = `%${search}%`;
+      params.push(term, term, term, term, term);
+    }
+
+    query += ` ORDER BY current_balance ASC, name ASC`;
+
+    const suppliers = await db.all<SupplierRow>(query, params);
+    const totalPayable = suppliers.reduce((sum, s) => sum + (s.current_balance < 0 ? Math.abs(s.current_balance) : 0), 0);
+
+    res.json({ totalPayable, suppliers });
+  } catch (err) { next(err); }
+});
 
 export default router;

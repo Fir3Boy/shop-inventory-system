@@ -30,6 +30,42 @@
       </div>
     </div>
 
+    <!-- Quick Search & Supplier Payable Filter Bar -->
+    <div class="card no-print" style="margin-bottom: 16px; padding: 12px; background: #fff; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      <input type="text" id="searchSupplierInput" oninput="filterSuppliersTable()" 
+             placeholder="🔍 Quick Search by Mill Name, Rep Name, Phone, or City..." 
+             style="flex: 2; min-width: 260px; padding: 10px 14px; font-size: 1rem; border: 1px solid #cbd5e1; border-radius: 6px;">
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <label style="font-size: 0.85rem; font-weight: 700; color: #475569;">Show:</label>
+        <select id="filterSupplierStatus" onchange="filterSuppliersTable()" style="padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+          <option value="PAYABLE_ONLY" selected>Pending Payment Only (We Owe)</option>
+          <option value="ALL">All Mills / Suppliers</option>
+        </select>
+      </div>
+
+      <span id="txtSupplierSearchCount" style="font-weight: 700; color: #64748b; font-size: 0.85rem;">Showing: 0</span>
+    </div>
+
+    <!-- Suppliers Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Mill / Company</th>
+              <th>Rep Contact & WA</th>
+              <th>City / Hub</th>
+              <th>Amount You Owe</th>
+              <th class="no-print" style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="suppliersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+
     <!-- Suppliers Table -->
     <div class="card" style="padding:0; overflow:hidden;">
       <div class="table-wrapper">

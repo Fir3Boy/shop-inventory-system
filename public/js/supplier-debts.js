@@ -1,3 +1,5 @@
+let allSuppliers = [];
+
 window.addEventListener('DOMContentLoaded', async () => {
   await loadSuppliers();
 });
@@ -5,33 +7,66 @@ window.addEventListener('DOMContentLoaded', async () => {
 async function loadSuppliers() {
   const res = await fetch('/api/suppliers');
   const data = await res.json();
+  allSuppliers = data.suppliers || [];
 
   document.getElementById('txtTotalPayable').innerText = `$${data.totalPayable.toFixed(2)}`;
   
-  const pending = data.suppliers.filter(s => s.current_balance < 0);
-  document.getElementById('txtSupplierCount').innerText = pending.length;
+  const pendingCount = allSuppliers.filter(s => s.current_balance < 0).length;
+  document.getElementById('txtSupplierCount').innerText = pendingCount;
 
+  filterSuppliersTable();
+}
+
+function filterSuppliersTable() {
+  const query = document.getElementById('searchSupplierInput').value.toLowerCase().trim();
+  const filterStatus = document.getElementById('filterSupplierStatus').value;
+
+  const filtered = allSuppliers.filter(s => {
+    // 1. Search text filter
+    const matchesSearch = !query ||
+      (s.name && s.name.toLowerCase().includes(query)) ||
+      (s.shop_name && s.shop_name.toLowerCase().includes(query)) ||
+      (s.phone && s.phone.includes(query)) ||
+      (s.secondary_phone && s.secondary_phone.includes(query)) ||
+      (s.city && s.city.toLowerCase().includes(query));
+
+    // 2. Payable balance filter (negative balance = we owe them)
+    const matchesPayable = (filterStatus === 'PAYABLE_ONLY') ? s.current_balance < 0 : true;
+
+    return matchesSearch && matchesPayable;
+  });
+
+  document.getElementById('txtSupplierSearchCount').innerText = `Showing: ${filtered.length} of ${allSuppliers.length}`;
+  renderSupplierRows(filtered);
+}
+
+function renderSupplierRows(suppliers) {
   const tbody = document.getElementById('suppliersTableBody');
-  if (data.suppliers.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#64748b;">No suppliers registered.</td></tr>';
+  if (!suppliers || suppliers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#64748b;">No matching supplier records found.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = data.suppliers.map(s => {
-    // In SQLite, negative balance means we owe the supplier
-    const amountOwed = s.current_balance < 0 ? Math.abs(s.current_balance) : 0;
+  tbody.innerHTML = suppliers.map(s => {
+    const owed = s.current_balance < 0 ? Math.abs(s.current_balance) : 0;
     return `
       <tr>
-        <td><strong>${s.name}</strong></td>
-        <td>${s.phone || '-'}</td>
-        <td><small style="color:#64748b;">${s.address || '-'}</small></td>
-        <td style="font-weight:800; font-size:1.1rem; color: ${amountOwed > 0 ? '#dc2626' : '#64748b'};">
-          $${amountOwed.toFixed(2)}
+        <td>
+          <strong>${s.shop_name || s.name}</strong>
+          ${s.shop_name ? `<br><small style="color:#64748b;">Rep: ${s.name}</small>` : ''}
+        </td>
+        <td>
+          📞 ${s.phone || '-'}
+          ${s.secondary_phone ? `<br><small style="color:#16a34a;">💬 WA: ${s.secondary_phone}</small>` : ''}
+        </td>
+        <td>${s.city || '-'}</td>
+        <td style="font-weight:800; font-size:1.1rem; color: ${owed > 0 ? '#dc2626' : '#64748b'};">
+          $${owed.toFixed(2)}
         </td>
         <td class="no-print" style="text-align:right;">
-          <button class="btn-action" style="padding:6px 12px; font-size:0.85rem; background:#7c3aed;" 
+          <button class="btn-action" style="padding:8px 14px; font-size:0.9rem; font-weight:bold; background:#7c3aed;" 
                   onclick="openSupplierLedger(${s.id})">
-            🏭 View Ledger / Pay
+            🏭 Record Payout / Statement
           </button>
         </td>
       </tr>
@@ -44,8 +79,13 @@ async function openSupplierLedger(supplierId) {
   const data = await res.json();
 
   const owed = data.supplier.current_balance < 0 ? Math.abs(data.supplier.current_balance) : 0;
+  const title = data.supplier.shop_name 
+    ? `${data.supplier.shop_name} (Rep: ${data.supplier.name})` 
+    : data.supplier.name;
+
   document.getElementById('modalSupplierTitle').innerText = 
-    `${data.supplier.name} (Amount Owed: $${owed.toFixed(2)})`;
+    `${title} — Amount You Owe: $${owed.toFixed(2)}`;
+
   document.getElementById('payoutSupplierId').value = supplierId;
   document.getElementById('payoutAmount').value = '';
   document.getElementById('payoutNote').value = '';
@@ -66,6 +106,7 @@ async function openSupplierLedger(supplierId) {
   }
 
   document.getElementById('supplierLedgerModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('payoutAmount').focus(), 100);
 }
 
 function closeSupplierModal() {
