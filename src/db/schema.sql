@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     invoice_number TEXT NOT NULL UNIQUE,
     party_id INTEGER NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('IN', 'OUT')), -- IN = Purchase, OUT = Sale
+    is_return INTEGER NOT NULL DEFAULT 0 CHECK (is_return IN (0, 1)), -- 0 = Normal, 1 = Return/Credit Note
     status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'COMPLETED', 'CANCELLED')),
     subtotal REAL NOT NULL DEFAULT 0.0 CHECK (subtotal >= 0),
     discount REAL NOT NULL DEFAULT 0.0 CHECK (discount >= 0),
@@ -112,6 +113,22 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
     FOREIGN KEY (party_id) REFERENCES parties (id) ON DELETE RESTRICT,
     FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL
 );
+CREATE TABLE IF NOT EXISTS stock_adjustments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    adjustment_type TEXT NOT NULL CHECK (adjustment_type IN ('DAMAGE', 'MISSING_THEFT', 'CORRECTION', 'FOUND_EXTRA', 'WASTE_CUTTING')),
+    system_spools INTEGER NOT NULL,       -- What computer had before audit
+    physical_spools INTEGER NOT NULL,     -- What was actually counted on shelf
+    delta_spools INTEGER NOT NULL,        -- Difference (e.g., -5)
+    unit_cost_snapshot REAL NOT NULL,     -- Cost price per spool at that moment
+    total_loss_value REAL NOT NULL,       -- abs(delta_spools) * unit_cost_snapshot
+    notes TEXT,
+    adjusted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_adjustments_product ON stock_adjustments(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_adjustments_date ON stock_adjustments(adjusted_at);
 
 -- ---------------------------------------------------------------------
 -- 4. PERFORMANCE INDEXES

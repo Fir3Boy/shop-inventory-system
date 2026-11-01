@@ -8,6 +8,8 @@ import partiesRouter from './routes/parties';
 import reportsRouter from './routes/reports';
 import customersRouter from './routes/customers';
 import suppliersRouter from './routes/suppliers';
+import adjustmentsRouter from './routes/adjustments';
+
 
 
 
@@ -15,6 +17,9 @@ import suppliersRouter from './routes/suppliers';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Mount adjustments API
+app.use('/api/adjustments', adjustmentsRouter);
 
 // Mount domain routes
 app.use('/api/customers', customersRouter);

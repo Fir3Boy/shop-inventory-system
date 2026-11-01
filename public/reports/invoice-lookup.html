@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice Lookup & Reprint - Textile ERP</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <!-- Top Action Bar -->
+    <div class="report-header-row no-print">
+      <div style="display:flex; align-items:center; gap: 12px;">
+        <button class="btn-preset" onclick="location.href='/reports.html'">&larr; Back to Directory</button>
+        <h2>Invoice Lookup & Document Reprint</h2>
+      </div>
+      <button class="btn-action" style="background:#0f172a;" onclick="window.print()">
+        🖨️ Print Invoice Receipt
+      </button>
+    </div>
+
+    <div class="admin-grid" style="grid-template-columns: 360px 1fr; align-items: start;">
+      
+      <!-- 1. Search & Results Sidebar (Hidden when printing) -->
+      <div class="card no-print" style="padding:0; overflow:hidden;">
+        <div style="padding: 14px; background:#f8fafc; border-bottom: 1px solid #e2e8f0;">
+          <input type="text" id="inputSearchInvoice" oninput="onSearchInput()" 
+                 placeholder="🔍 Search Invoice #, Ref, Customer, Mill..." 
+                 style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:4px; font-size:0.95rem;">
+        </div>
+
+        <div style="max-height: 650px; overflow-y: auto;" id="searchResultsList">
+          <!-- Invoices injected here -->
+        </div>
+      </div>
+
+      <!-- 2. The Official Printable Invoice Document (A4 Printable) -->
+      <div class="card" id="invoiceDocumentCard" style="background:#fff; min-height: 600px; padding: 24px; border: 1px solid #cbd5e1;">
+        
+        <!-- Placeholder when no invoice is selected -->
+        <div id="noSelectionMsg" style="text-align:center; padding: 100px 20px; color:#94a3b8;">
+          <h2 style="font-size:1.5rem; margin-bottom: 8px;">No Invoice Selected</h2>
+          <p>Search or click any invoice on the left to inspect its line items and print a copy.</p>
+        </div>
+
+        <!-- Rendered Document -->
+        <div id="invoiceDocumentBody" style="display:none;">
+          
+          <!-- Document Header -->
+          <div style="display:flex; justify-content:space-between; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 16px;">
+            <div>
+              <h1 style="font-size: 1.8rem; margin-bottom: 4px;">🧵 TEXTILE TRADERS</h1>
+              <p style="color:#64748b; font-size:0.9rem;">Wholesale & Retail Fabric Specialists</p>
+            </div>
+            <div style="text-align:right;">
+              <span id="docBadgeType" style="font-size:0.85rem; font-weight:800; padding:4px 10px; border-radius:4px;"></span>
+              <h2 id="docInvoiceNumber" style="margin-top: 6px; font-size: 1.3rem;"></h2>
+              <p style="color:#64748b; font-size:0.85rem;">Date: <strong id="docDate" style="color:#0f172a;"></strong></p>
+            </div>
+          </div>
+
+          <!-- Party Details & Ref Info Box -->
+          <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap: 16px; background:#f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 16px; border:1px solid #e2e8f0;">
+            <div>
+              <small style="text-transform:uppercase; font-weight:700; color:#64748b;" id="lblPartyType">Party Details:</small>
+              <h3 id="docPartyName" style="margin-top:2px;"></h3>
+              <p id="docPartyContact" style="font-size:0.85rem; color:#475569;"></p>
+              <p id="docPartyAddress" style="font-size:0.85rem; color:#475569;"></p>
+            </div>
+            <div style="border-left: 1px solid #cbd5e1; padding-left: 14px;">
+              <small style="text-transform:uppercase; font-weight:700; color:#64748b;">Paper Ref / Notes:</small>
+              <p id="docInvoiceNotes" style="font-weight:700; color:#0f172a; margin-top: 4px; font-size:0.95rem;">-</p>
+            </div>
+          </div>
+
+          <!-- Line Items Table -->
+          <table class="data-table" style="margin-bottom: 20px;">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product Description</th>
+                <th>SKU</th>
+                <th>Unit</th>
+                <th>Qty</th>
+                <th>Spools</th>
+                <th>Rate ($)</th>
+                <th>Total ($)</th>
+              </tr>
+            </thead>
+            <tbody id="docItemsBody"></tbody>
+          </table>
+
+          <!-- Financial Summary Calculation -->
+          <div style="display:flex; justify-content:flex-end;">
+            <div style="width: 280px; border-top: 2px solid #cbd5e1; padding-top: 8px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:1.1rem; font-weight:700;">
+                <span>Total Amount:</span>
+                <span id="docTotalAmount">$0.00</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.95rem; color:#16a34a;">
+                <span>Cash Settled:</span>
+                <span id="docPaidAmount">$0.00</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:800; border-top:1px dashed #cbd5e1; padding-top:6px; color:#dc2626;">
+                <span>Balance Remaining:</span>
+                <span id="docBalanceDue">$0.00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Print Footer Signature Area -->
+          <div style="margin-top: 60px; display:flex; justify-content:space-between; font-size:0.85rem; color:#64748b;">
+            <div style="border-top: 1px solid #94a3b8; width: 180px; text-align:center; padding-top:4px;">
+              Receiver's Signature
+            </div>
+            <div style="border-top: 1px solid #94a3b8; width: 180px; text-align:center; padding-top:4px;">
+              Authorized Signature
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="/js/nav.js"></script>
+  <script src="/js/reports/invoice-lookup.js"></script>
+</body>
+</html>

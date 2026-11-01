@@ -25,6 +25,136 @@ class InvoiceDraftEngine {
     await this.loadParties();
     this.setupModalControls();
   }
+  // Toggle between Standard Sale and Return Mode
+  async setMode(isReturn) {
+    if (this.isReturn === isReturn) return;
+    this.isReturn = isReturn;
+
+    const btnSale = document.getElementById('btnModeSale');
+    const btnReturn = document.getElementById('btnModeReturn');
+    const title = document.getElementById('txtInvoiceTitle');
+    const billLabel = document.getElementById('txtBillTotalLabel');
+    const cashLabel = document.getElementById('lblCashPaid');
+    const commitBtn = document.getElementById('btnCommitInvoice');
+    const panel = document.getElementById('invoicePanel');
+
+    if (this.isReturn) {
+      btnReturn.style.background = '#d97706';
+      btnReturn.style.color = '#fff';
+      btnSale.style.background = '#cbd5e1';
+      btnSale.style.color = '#475569';
+
+      panel.style.borderTop = '5px solid #d97706';
+      title.innerText = '🔄 Customer Return (Credit Note)';
+      title.style.color = '#d97706';
+      billLabel.innerText = 'Return Credit Value:';
+      cashLabel.innerText = 'Cash Refund Given Out ($):';
+      commitBtn.innerText = '✓ COMMIT RETURN & RESTOCK';
+      commitBtn.style.background = '#d97706';
+    } else {
+      btnSale.style.background = '#2563eb';
+      btnSale.style.color = '#fff';
+      btnReturn.style.background = '#cbd5e1';
+      btnReturn.style.color = '#475569';
+
+      panel.style.borderTop = 'none';
+      title.innerText = 'Customer Sales Invoice';
+      title.style.color = '#0f172a';
+      billLabel.innerText = 'Bill Total:';
+      cashLabel.innerText = 'Cash Received ($):';
+      commitBtn.innerText = '✓ COMMIT SALE';
+      commitBtn.style.background = '#16a34a';
+    }
+
+    // Start a new draft sheet with the chosen mode
+    await this.createNewDraft();
+  }
+
+  async createNewDraft() {
+    if (!this.currentParty) return;
+
+    const res = await fetch('/api/invoices/draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        partyId: this.currentParty.id, 
+        type: this.type,
+        isReturn: this.isReturn 
+      })
+    });
+    this.currentDraft = await res.json();
+    
+    const notesInput = document.getElementById('inputInvoiceNotes');
+    if (notesInput) notesInput.value = '';
+
+    this.renderTable([]);
+  }
+
+  calculateBalances() {
+    if (this.txtBillTotal) {
+      this.txtBillTotal.innerText = `$${this.currentBillTotal.toFixed(2)}`;
+    }
+
+    const cashInput = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
+    const oldBalance = this.currentParty ? this.currentParty.current_balance : 0;
+
+    let newBalance = oldBalance;
+
+    if (this.type === 'OUT') {
+      if (this.isReturn) {
+        // RETURN: Returning goods reduces customer debt (- billTotal)
+        // If cash refund is given to customer, it adds back (+ cashInput)
+        newBalance = oldBalance - this.currentBillTotal + cashInput;
+      } else {
+        // SALE: Goods increase debt (+ billTotal) - cash received (- cashInput)
+        newBalance = oldBalance + this.currentBillTotal - cashInput;
+      }
+    } else {
+      // PURCHASE
+      newBalance = oldBalance - this.currentBillTotal + cashInput;
+    }
+
+    if (this.txtNewBalance) {
+      this.txtNewBalance.innerText = `$${newBalance.toFixed(2)}`;
+      this.txtNewBalance.style.color = newBalance > 0 ? '#16a34a' : '#dc2626';
+    }
+  }
+
+  setFullCash() {
+    if (this.inputCashPaid) {
+      this.inputCashPaid.value = this.currentBillTotal.toFixed(2);
+      this.calculateBalances();
+    }
+  }
+
+  async commit(btn) {
+    if (!this.currentDraft) return;
+
+    const actionText = this.isReturn ? 'RETURN and restock' : 'SALE';
+    if (!confirm(`Finalize and commit this ${actionText}?`)) return;
+
+    const cashAmount = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
+    const notesInput = document.getElementById('inputInvoiceNotes');
+    const notes = notesInput ? notesInput.value.trim() : '';
+
+    btn.disabled = true;
+    const res = await fetch(`/api/invoices/${this.currentDraft.id}/commit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paidAmount: cashAmount, notes })
+    });
+
+    const data = await res.json();
+    btn.disabled = false;
+
+    if (data.error) {
+      alert(`Commit Failed: ${data.error}`);
+    } else {
+      alert(this.isReturn ? 'Return processed! Items added back to stock.' : 'Sale committed successfully!');
+      window.location.reload();
+    }
+  }
+
 
 async loadParties() {
     const filter = this.type === 'OUT' ? 'CUSTOMER' : 'SUPPLIER';

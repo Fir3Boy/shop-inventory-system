@@ -6,14 +6,16 @@ const router = Router();
 // Create or fetch active draft for a party
 router.post('/draft', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { partyId, type = 'OUT' } = req.body;
+    const { partyId, type = 'OUT', isReturn = false } = req.body;
     if (!partyId) return res.status(400).json({ error: 'Party ID required.' });
 
-    const invoiceNumber = `${type === 'OUT' ? 'SALE' : 'PUR'}-${Date.now().toString().slice(-6)}`;
+    const prefix = isReturn ? 'RET' : (type === 'OUT' ? 'SALE' : 'PUR');
+    const invoiceNumber = `${prefix}-${Date.now().toString().slice(-6)}`;
 
     const result = await db.run(
-      `INSERT INTO invoices (invoice_number, party_id, type, status) VALUES (?, ?, ?, 'DRAFT')`,
-      [invoiceNumber, partyId, type]
+      `INSERT INTO invoices (invoice_number, party_id, type, is_return, status) 
+       VALUES (?, ?, ?, ?, 'DRAFT')`,
+      [invoiceNumber, partyId, type, isReturn ? 1 : 0]
     );
 
     const draft = await db.get('SELECT * FROM invoices WHERE id = ?', [result.lastID]);
@@ -108,8 +110,7 @@ router.delete('/:id/items/:itemId', async (req: Request, res: Response, next: Ne
 router.post('/:id/commit', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const invoiceId = req.params.id;
-    const paidAmount = Math.max(0, Number(req.body.paidAmount) || 0);
-    // 1. Read optional notes from request body
+    const paidAmount = Math.max(0, Number(req.body.paidAmount) || 0); // Cash refunded
     const notes = req.body.notes ? String(req.body.notes).trim() : null;
 
     await db.transaction(async () => {
@@ -117,78 +118,176 @@ router.post('/:id/commit', async (req: Request, res: Response, next: NextFunctio
       if (!invoice || invoice.status !== 'DRAFT') throw new Error('Valid draft invoice required.');
 
       const items = await db.all<any>('SELECT * FROM invoice_items WHERE invoice_id = ?', [invoiceId]);
-      if (items.length === 0) throw new Error('Cannot commit an empty invoice sheet.');
+      if (items.length === 0) throw new Error('Cannot commit an empty return/sale sheet.');
 
       const party = await db.get<any>('SELECT * FROM parties WHERE id = ?', [invoice.party_id]);
       if (!party) throw new Error('Party not found.');
 
-      // Inventory deductions / additions
+      // 1. INVENTORY ADJUSTMENTS
       for (const item of items) {
         if (invoice.type === 'OUT') {
-          const prod = await db.get<any>('SELECT stock_spools FROM products WHERE id = ?', [item.product_id]);
-          if (prod.stock_spools < item.base_quantity_spools) {
-            throw new Error(`Insufficient inventory for product ID: ${item.product_id}`);
+          if (invoice.is_return === 1) {
+            // CUSTOMER RETURN: Add returned spools BACK into physical stock
+            await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          } else {
+            // STANDARD SALE: Deduct from stock
+            const prod = await db.get<any>('SELECT stock_spools FROM products WHERE id = ?', [item.product_id]);
+            if (prod.stock_spools < item.base_quantity_spools) {
+              throw new Error(`Insufficient inventory for product ID: ${item.product_id}`);
+            }
+            await db.run('UPDATE products SET stock_spools = stock_spools - ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
           }
-          await db.run('UPDATE products SET stock_spools = stock_spools - ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
         } else {
+          // PURCHASES
           await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
         }
       }
 
-      // Financials
+      // 2. FINANCIALS & DOUBLE-ENTRY LEDGER
       const invoiceTotal = invoice.total_amount;
-      const invoiceBalanceDue = Math.max(0, invoiceTotal - paidAmount);
+      const refTag = notes ? ` [Ref: ${notes}]` : '';
       let runningBalance = party.current_balance;
 
-      // Tag notes onto ledger description if present (e.g. "Invoice #SALE-001 [Ref: KM-8492]")
-      const refTag = notes ? ` [Ref: ${notes}]` : '';
-
       if (invoice.type === 'OUT') {
-        runningBalance += invoiceTotal;
-        await db.run(
-          `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
-           VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
-          [party.id, invoice.id, invoiceTotal, runningBalance, `Invoice #${invoice.invoice_number}${refTag}`]
-        );
-
-        if (paidAmount > 0) {
-          runningBalance -= paidAmount;
+        if (invoice.is_return === 1) {
+          // --- CASE A: CUSTOMER RETURN / CREDIT NOTE ---
+          // 1. Return Value credits customer account (reduces debt)
+          runningBalance -= invoiceTotal;
           await db.run(
             `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
              VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
-            [party.id, invoice.id, paidAmount, runningBalance, `Cash Paid for #${invoice.invoice_number}`]
+            [party.id, invoice.id, invoiceTotal, runningBalance, `Credit Note / Return #${invoice.invoice_number}${refTag}`]
           );
-        }
-      } else {
-        runningBalance -= invoiceTotal;
-        await db.run(
-          `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
-           VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
-          [party.id, invoice.id, invoiceTotal, runningBalance, `Supplier Bill #${invoice.invoice_number}${refTag}`]
-        );
 
-        if (paidAmount > 0) {
-          runningBalance += paidAmount;
+          // 2. If father handed cash back to customer: Debits customer account (cancels the credit back to old debt)
+          if (paidAmount > 0) {
+            runningBalance += paidAmount;
+            await db.run(
+              `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+               VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+              [party.id, invoice.id, paidAmount, runningBalance, `Cash Refund Paid Out for #${invoice.invoice_number}`]
+            );
+          }
+        } else {
+          // --- CASE B: STANDARD SALE ---
+          runningBalance += invoiceTotal;
           await db.run(
             `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
              VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
-            [party.id, invoice.id, paidAmount, runningBalance, `Cash Paid for #${invoice.invoice_number}`]
+            [party.id, invoice.id, invoiceTotal, runningBalance, `Invoice #${invoice.invoice_number}${refTag}`]
           );
+
+          if (paidAmount > 0) {
+            runningBalance -= paidAmount;
+            await db.run(
+              `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+               VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+              [party.id, invoice.id, paidAmount, runningBalance, `Cash Paid for #${invoice.invoice_number}`]
+            );
+          }
         }
       }
 
+      // 3. Save Final Party Balance & Finalize Invoice
       await db.run('UPDATE parties SET current_balance = ? WHERE id = ?', [runningBalance, party.id]);
 
-      // 2. Save notes and finalized status to invoices table
       await db.run(
         `UPDATE invoices 
          SET status = 'COMPLETED', paid_amount = ?, balance_due = ?, notes = ?, committed_at = CURRENT_TIMESTAMP 
          WHERE id = ?`,
-        [paidAmount, invoiceBalanceDue, notes, invoiceId]
+        [paidAmount, Math.max(0, invoiceTotal - paidAmount), notes, invoiceId]
       );
     });
 
     res.json({ success: true });
+  } catch (err) { next(err); }
+});
+// 1. Search / List Invoices (by Invoice #, Ref/Notes, or Customer/Supplier Name)
+router.get('/lookup', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const query = req.query.q ? String(req.query.q).trim() : '';
+    let sql = `
+      SELECT 
+        i.id,
+        i.invoice_number,
+        i.type,
+        i.is_return,
+        i.status,
+        i.total_amount,
+        i.paid_amount,
+        i.balance_due,
+        i.notes,
+        date(i.committed_at) AS invoice_date,
+        pt.name AS party_name,
+        pt.shop_name AS party_shop,
+        pt.type AS party_type
+      FROM invoices i
+      JOIN parties pt ON i.party_id = pt.id
+      WHERE i.status = 'COMPLETED'
+    `;
+    const params: unknown[] = [];
+
+    if (query) {
+      sql += ` AND (
+        i.invoice_number LIKE ? OR 
+        i.notes LIKE ? OR 
+        pt.name LIKE ? OR 
+        pt.shop_name LIKE ?
+      )`;
+      const term = `%${query}%`;
+      params.push(term, term, term, term);
+    }
+
+    sql += ` ORDER BY i.committed_at DESC LIMIT 50`;
+
+    const rows = await db.all(sql, params);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
+// 2. Get Full Invoice Details & Line Items (by ID or Invoice Number)
+router.get('/details/:identifier', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { identifier } = req.params;
+
+    // Fetch Invoice Header & Party Details
+    const invoice = await db.get<any>(
+      `SELECT 
+        i.*,
+        date(i.committed_at) AS invoice_date,
+        pt.name AS party_name,
+        pt.shop_name AS party_shop,
+        pt.phone AS party_phone,
+        pt.secondary_phone AS party_secondary_phone,
+        pt.city AS party_city,
+        pt.address AS party_address,
+        pt.type AS party_type
+       FROM invoices i
+       JOIN parties pt ON i.party_id = pt.id
+       WHERE (i.invoice_number = ? OR i.id = ?) AND i.status = 'COMPLETED'`,
+      [identifier, identifier]
+    );
+
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found or not yet completed.' });
+    }
+
+    // Fetch Line Items
+    const items = await db.all(
+      `SELECT 
+        ii.*,
+        p.name AS product_name,
+        p.sku,
+        b.name AS brand_name
+       FROM invoice_items ii
+       JOIN products p ON ii.product_id = p.id
+       JOIN brands b ON p.brand_id = b.id
+       WHERE ii.invoice_id = ?
+       ORDER BY ii.id ASC`,
+      [invoice.id]
+    );
+
+    res.json({ invoice, items });
   } catch (err) { next(err); }
 });
 
