@@ -396,5 +396,105 @@ router.get('/supplier-activity', async (req: Request, res: Response, next: NextF
     res.json({ summary, rows });
   } catch (err) { next(err); }
 });
+// =====================================================================
+// GATE 7: Daily Cash Drawer Closing Reconciliation (Z-Report)
+// =====================================================================
+router.get('/daily-cash-closing', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const targetDate = req.query.date ? String(req.query.date).trim() : new Date().toISOString().split('T')[0];
+
+    // 1. CASH INFLOW A: Cash collected on Sales Invoices
+    const salesCashRow = await db.get<any>(
+      `SELECT COALESCE(SUM(paid_amount), 0) AS total
+       FROM invoices
+       WHERE type = 'OUT' AND is_return = 0 AND status = 'COMPLETED' AND date(committed_at) = date(?)`,
+      [targetDate]
+    );
+
+    // 2. CASH INFLOW B: Direct debt collections from customers outside invoices
+    const directCollectionRow = await db.get<any>(
+      `SELECT COALESCE(SUM(le.amount), 0) AS total
+       FROM ledger_entries le
+       JOIN parties p ON le.party_id = p.id
+       WHERE p.type = 'CUSTOMER' AND le.entry_type = 'CREDIT' AND le.invoice_id IS NULL AND date(le.created_at) = date(?)`,
+      [targetDate]
+    );
+
+    // 3. CASH OUTFLOW A: Cash refunded to customers on returns
+    const refundCashRow = await db.get<any>(
+      `SELECT COALESCE(SUM(paid_amount), 0) AS total
+       FROM invoices
+       WHERE type = 'OUT' AND is_return = 1 AND status = 'COMPLETED' AND date(committed_at) = date(?)`,
+      [targetDate]
+    );
+
+    // 4. CASH OUTFLOW B: Cash paid to suppliers/mills on inward purchases
+    const purchaseCashRow = await db.get<any>(
+      `SELECT COALESCE(SUM(paid_amount), 0) AS total
+       FROM invoices
+       WHERE type = 'IN' AND status = 'COMPLETED' AND date(committed_at) = date(?)`,
+      [targetDate]
+    );
+
+    // 5. CASH OUTFLOW C: Direct payouts sent to suppliers outside invoices
+    const directPayoutRow = await db.get<any>(
+      `SELECT COALESCE(SUM(le.amount), 0) AS total
+       FROM ledger_entries le
+       JOIN parties p ON le.party_id = p.id
+       WHERE p.type = 'SUPPLIER' AND le.entry_type = 'DEBIT' AND le.invoice_id IS NULL AND date(le.created_at) = date(?)`,
+      [targetDate]
+    );
+
+    const cashFromSales = salesCashRow.total;
+    const cashFromDebtCollections = directCollectionRow.total;
+    const totalCashIn = cashFromSales + cashFromDebtCollections;
+
+    const cashRefunded = refundCashRow.total;
+    const cashPaidPurchases = purchaseCashRow.total;
+    const cashPaidSuppliersDirect = directPayoutRow.total;
+    const totalCashOut = cashRefunded + cashPaidPurchases + cashPaidSuppliersDirect;
+
+    const netExpectedDrawerCash = totalCashIn - totalCashOut;
+
+    // 6. Fetch Itemized Chronological Cash Audit Trail for Today
+    const auditEntries = await db.all(
+      `SELECT 
+         time(le.created_at) AS time_str,
+         le.entry_type,
+         le.amount,
+         le.description,
+         p.name AS party_name,
+         p.shop_name AS party_shop,
+         p.type AS party_type
+       FROM ledger_entries le
+       JOIN parties p ON le.party_id = p.id
+       WHERE date(le.created_at) = date(?)
+         AND (
+           -- Customer cash payments (Credit) or cash refunds (Debit)
+           (p.type = 'CUSTOMER' AND (le.description LIKE '%Cash Paid%' OR le.description LIKE '%Cash Collected%' OR le.description LIKE '%Cash Refund%'))
+           OR
+           -- Supplier cash payouts (Debit)
+           (p.type = 'SUPPLIER' AND (le.description LIKE '%Cash Paid%' OR le.description LIKE '%Payout%'))
+         )
+       ORDER BY le.created_at ASC`,
+      [targetDate]
+    );
+
+    res.json({
+      targetDate,
+      summary: {
+        cashFromSales,
+        cashFromDebtCollections,
+        totalCashIn,
+        cashRefunded,
+        cashPaidPurchases,
+        cashPaidSuppliersDirect,
+        totalCashOut,
+        netExpectedDrawerCash
+      },
+      auditEntries
+    });
+  } catch (err) { next(err); }
+});
 
 export default router;

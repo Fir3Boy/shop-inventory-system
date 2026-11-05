@@ -10,6 +10,8 @@ import customersRouter from './routes/customers';
 import suppliersRouter from './routes/suppliers';
 import adjustmentsRouter from './routes/adjustments';
 
+import backupRouter from './routes/backup';
+
 
 
 
@@ -17,6 +19,9 @@ import adjustmentsRouter from './routes/adjustments';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Mount backup API
+app.use('/api/backup', backupRouter);
 
 // Mount adjustments API
 app.use('/api/adjustments', adjustmentsRouter);

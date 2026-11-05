@@ -13,20 +13,41 @@
       <div class="tiles-grid" id="purTiles"></div>
     </section>
 
-    <!-- Inbound Draft Sheet with Live Cash/Credit Handling -->
-    <!-- TODO: Add the supplier "Company / Mill Name" to ease lookup -->
-    <aside class="pos-invoice">
+    <!-- Inbound Draft Sheet with Mode Switcher -->
+    <aside class="pos-invoice" id="invoicePanel">
       <div class="sheet-header">
-        <h2>Stock IN (Supplier Purchase)</h2>
-        <div class="field-group">
-          <label>Supplier:</label>
-          <select id="partySelect" onchange="draftEngine.handlePartyChange()"></select>
+        
+        <!-- Tactile Purchase vs Return Mode Toggle -->
+        <div style="display:flex; gap: 8px; margin-bottom: 12px;">
+          <button type="button" id="btnModePurchase" class="btn-action" 
+                  style="flex:1; padding: 10px; background:#7c3aed; font-weight:800;" 
+                  onclick="draftEngine.setMode(false)">
+            📦 Inward Stock
+          </button>
+          <button type="button" id="btnModeReturn" class="btn-action" 
+                  style="flex:1; padding: 10px; background:#334155; color:#94a3b8; font-weight:800;" 
+                  onclick="draftEngine.setMode(true)">
+            🔄 Return to Mill
+          </button>
         </div>
-        <!-- Notes / Paper Bill # Field -->
+
+        <h2 id="txtInvoiceTitle" style="color: #f8fafc;">Stock IN (Supplier Purchase)</h2>
+
+        <!-- Supplier Search & Dropdown -->
+        <div class="field-group" style="align-items: flex-start; margin-top: 8px;">
+          <label style="margin-top: 6px; color: #94a3b8;">Supplier:</label>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <input type="text" id="partySearchInput" placeholder="🔍 Quick search mill, rep, phone..." 
+                   oninput="draftEngine.filterParties(this.value)" 
+                   style="width: 100%; padding: 6px 10px; border: 1px solid #475569; border-radius: 4px; font-size: 0.85rem; background: #0f172a; color: #f8fafc;">
+            <select id="partySelect" onchange="draftEngine.handlePartyChange()" style="width: 100%; background: #0f172a; color: #f8fafc; border: 1px solid #475569; padding: 8px; border-radius: 4px;"></select>
+          </div>
+        </div>
+
         <div class="field-group" style="margin-top: 8px;">
-          <label>Mill Bill #:</label>
+          <label id="lblNotes" style="color: #94a3b8;">Mill Bill #:</label>
           <input type="text" id="inputInvoiceNotes" placeholder="Original Paper Invoice / Delivery Bill #"
-                 style="flex:1; padding:8px 12px; border-radius:4px; border:1px solid #cbd5e1; font-size:0.95rem;">
+                 style="flex:1; padding:8px 12px; border-radius:4px; border:1px solid #475569; font-size:0.95rem; background: #0f172a; color: #f8fafc;">
         </div>
       </div>
 
@@ -41,44 +62,48 @@
 
       <!-- Financial Breakdown & Cash Outflow -->
       <div class="sheet-footer">
-        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 4px; color:#64748b;">
-          <span>Previous Balance Owed:</span>
+        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 4px; color:#94a3b8;">
+          <span>Current Balance Owed:</span>
           <span id="txtOldBalance">$0.00</span>
         </div>
         
-        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:1.15rem; font-weight:700;">
-          <span>Current Inward Total:</span>
+        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:1.15rem; font-weight:700; color: #f8fafc;">
+          <span id="txtBillTotalLabel">Current Inward Total:</span>
           <span id="txtBillTotal">$0.00</span>
         </div>
 
-        <!-- Cash Paid to Supplier Section -->
-        <div style="background:#f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #cbd5e1;">
+        <!-- Cash Section -->
+        <div style="background:#0f172a; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #334155;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-            <label style="font-weight:700; font-size:0.9rem;">Cash Paid to Supplier ($):</label>
-            <button type="button" class="btn-action" style="padding: 4px 10px; font-size:0.8rem; background:#7c3aed;" onclick="draftEngine.setFullCash()">
-              💵 Paid in Full
+            <label id="lblCashPaid" style="font-weight:700; font-size:0.9rem; color: #94a3b8;">Cash Paid to Supplier ($):</label>
+            <button type="button" class="btn-action" id="btnQuickCash" 
+                    style="padding: 4px 10px; font-size:0.8rem; background:#1e293b; color: #f8fafc; border: 1px solid #334155;" 
+                    onclick="draftEngine.setFullCash()">
+              💵 Exact Match
             </button>
           </div>
-          <input type="number" id="inputCashPaid" step="10.00" value="0.00" oninput="draftEngine.calculateBalances()" 
-                 style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #94a3b8; border-radius:4px; text-align:right;">
+          <input type="number" id="inputCashPaid" step="0.01" value="0.00" oninput="draftEngine.calculateBalances()" 
+                 style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #475569; border-radius:4px; text-align:right; background: #1e293b; color: #f8fafc;">
         </div>
 
-        <div class="total-row" style="font-size:1.1rem; color:#1e293b; margin-bottom: 12px;">
+        <div class="total-row" style="font-size:1.05rem; color:#f8fafc; margin-bottom: 12px;">
           <span>New Balance With Supplier:</span>
           <span id="txtNewBalance">$0.00</span>
         </div>
 
-        <button class="btn-commit purchase" onclick="draftEngine.commit(this)">+ COMMIT STOCK IN (PURCHASE)</button>
+        <button class="btn-commit purchase" id="btnCommitInvoice" onclick="draftEngine.commit(this)">
+          + COMMIT STOCK IN (PURCHASE)
+        </button>
       </div>
     </aside>
 
   </div>
 
-<!-- Reusable Touch Selection Modal for Inward Stock -->
+  <!-- Reusable Touch Selection Modal for Inward Stock -->
   <div class="modal-overlay" id="unitModal">
-    <div class="modal-content">
-      <h3 id="modalProductName">Select Unit & Quantity</h3>
-      <p id="modalStockInfo" style="font-size:0.85rem; color:#64748b; margin: 8px 0;"></p>
+    <div class="modal-content" style="background: #1e293b; border: 1px solid #334155; color: #f8fafc;">
+      <h3 id="modalProductName" style="color: #f8fafc;">Select Unit & Quantity</h3>
+      <p id="modalStockInfo" style="font-size:0.85rem; color:#94a3b8; margin: 8px 0;"></p>
       
       <div class="unit-toggle-group">
         <button class="unit-btn active" id="btnUnitCarton" onclick="setModalUnit('CARTON')">Carton</button>
@@ -87,22 +112,22 @@
 
       <div class="counter-box">
         <button class="btn-circle" onclick="adjustModalQty(-1)">-</button>
-        <span class="qty-display" id="qtyDisplay">1</span>
+        <span class="qty-display" id="qtyDisplay" style="color: #f8fafc;">1</span>
         <button class="btn-circle" onclick="adjustModalQty(1)">+</button>
       </div>
 
       <!-- Cost & Supplier Price-Hike Tracker -->
-      <div class="price-box">
+      <div class="price-box" style="background: #0f172a; border: 1px dashed #475569;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label style="font-size:0.85rem; font-weight:bold;">Supplier Cost per Unit ($):</label>
+          <label style="font-size:0.85rem; font-weight:bold; color: #94a3b8;">Supplier Cost per Unit ($):</label>
           <!-- Badge showing previous purchase price -->
-          <span id="txtLastCostHint" style="font-size:0.75rem; background:#e0e7ff; color:#3730a3; padding:3px 8px; border-radius:4px; font-weight:700;">
+          <span id="txtLastCostHint" style="font-size:0.75rem; background:#312e81; color:#c7d2fe; padding:3px 8px; border-radius:4px; font-weight:700; border: 1px solid #4338ca;">
             Prev Cost: $0.00
           </span>
         </div>
 
         <!-- Inward cost input -->
-        <input type="number" id="modalPriceInput" step="0.01" oninput="draftEngine.updateMarginDisplay()">
+        <input type="number" id="modalPriceInput" step="0.01" oninput="draftEngine.updateMarginDisplay()" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
 
         <!-- Shows if supplier raised or reduced the price -->
         <div id="txtMarginFeedback" style="margin-top:6px; font-size:0.8rem; font-weight:700;"></div>
@@ -119,7 +144,7 @@
   <script src="js/cascade.js"></script>
   <script src="js/invoice-draft.js"></script>
   <script>
-// Initialized for Stock IN (Purchases)
+    // Initialized for Stock IN (Purchases)
     const draftEngine = new InvoiceDraftEngine('IN', 'partySelect', 'invoiceItemsBody');
     const catalog = new CatalogDrillDown('purTiles', 'purBreadcrumbs', (p) => draftEngine.openAddModal(p));
   </script>

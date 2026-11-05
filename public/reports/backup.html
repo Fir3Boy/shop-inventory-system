@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Database Backup & Safety - Textile ERP</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="full-page-scroll">
+
+    <!-- Header Actions -->
+    <div class="report-header-row no-print">
+      <div style="display:flex; align-items:center; gap: 12px;">
+        <button class="btn-preset" onclick="location.href='/reports.html'">&larr; Back to Directory</button>
+        <h2>Database Safety & Disaster Recovery</h2>
+      </div>
+    </div>
+
+    <!-- 1. The Main USB Backup Card (Father-Friendly) -->
+    <div class="card" style="margin-bottom: 24px; border-left: 6px solid #16a34a; background: #fff;">
+      <h2 style="font-size: 1.3rem; margin-bottom: 8px;">💾 Backup Directly to USB Flash Drive</h2>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.5; margin-bottom: 16px;">
+        Plug your USB flash drive into the computer, then click the button below. Your browser will download an exact copy of all invoices, customer debts, and inventory.
+      </p>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <!-- Direct File Download Link -->
+        <a href="/api/backup/download" class="btn-action" 
+           style="background: #16a34a; padding: 14px 24px; font-size: 1.1rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 800;">
+          📥 Download Backup to USB Drive
+        </a>
+
+        <!-- Local Snapshot Button -->
+        <button type="button" class="btn-action" onclick="createLocalSnapshot()" 
+                style="background: #0f172a; padding: 14px 20px; font-size: 1rem;">
+          ⚙️ Save Local PC Snapshot
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. Local PC Snapshots Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding: 14px 16px; background:#f8fafc; border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size: 1rem;">Stored Local PC Snapshots (Past 15 Versions)</h3>
+        <span style="font-size:0.8rem; color:#64748b;">Automatically stored in project <code>/backups</code> folder</span>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Backup File Name</th>
+              <th>Created Date & Time</th>
+              <th>File Size</th>
+              <th style="text-align:right;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="backupsListBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3. Disaster Recovery Advice Box -->
+    <div class="card" style="margin-top: 24px; background: #fefce8; border: 1px solid #fef08a;">
+      <h3 style="color: #854d0e; font-size: 1rem; margin-bottom: 6px;">💡 Disaster Recovery Guide (What if the PC dies?)</h3>
+      <p style="color: #713f12; font-size: 0.85rem; line-height: 1.4;">
+        If this computer ever breaks down or is replaced:
+        <br>1. Install the app on the new Windows PC.
+        <br>2. Copy your latest <code>textile_backup_...sqlite</code> file from your USB flash drive.
+        <br>3. Rename it to <code>inventory.sqlite</code> and place it inside the <code>data/</code> folder.
+        <br>All your sales history, debts, and inventory will immediately be restored.
+      </p>
+    </div>
+
+  </div>
+
+  <script src="/js/nav.js"></script>
+  <script src="/js/reports/backup.js"></script>
+</body>
+</html>

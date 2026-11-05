@@ -1,6 +1,8 @@
 class InvoiceDraftEngine {
   constructor(invoiceType, partySelectId, tableBodyId) {
     this.type = invoiceType; // 'OUT' or 'IN'
+    this.isReturn = false;   // true = Customer Return (Credit Note) or Supplier Return (Debit Note)
+    
     this.partySelect = document.getElementById(partySelectId);
     this.tableBody = document.getElementById(tableBodyId);
 
@@ -25,51 +27,82 @@ class InvoiceDraftEngine {
     await this.loadParties();
     this.setupModalControls();
   }
-  // Toggle between Standard Sale and Return Mode
+
+  // ---------------------------------------------------------------------
+  // 1. MODE SWITCHER (Sale vs Return / Purchase vs Debit Note)
+  // ---------------------------------------------------------------------
   async setMode(isReturn) {
     if (this.isReturn === isReturn) return;
     this.isReturn = isReturn;
 
-    const btnSale = document.getElementById('btnModeSale');
+    const btnMain = document.getElementById(this.type === 'OUT' ? 'btnModeSale' : 'btnModePurchase');
     const btnReturn = document.getElementById('btnModeReturn');
     const title = document.getElementById('txtInvoiceTitle');
     const billLabel = document.getElementById('txtBillTotalLabel');
     const cashLabel = document.getElementById('lblCashPaid');
     const commitBtn = document.getElementById('btnCommitInvoice');
     const panel = document.getElementById('invoicePanel');
+    const notesLabel = document.getElementById('lblNotes');
 
     if (this.isReturn) {
       btnReturn.style.background = '#d97706';
       btnReturn.style.color = '#fff';
-      btnSale.style.background = '#cbd5e1';
-      btnSale.style.color = '#475569';
+      if (btnMain) {
+        btnMain.style.background = '#cbd5e1';
+        btnMain.style.color = '#475569';
+      }
 
       panel.style.borderTop = '5px solid #d97706';
-      title.innerText = '🔄 Customer Return (Credit Note)';
+
+      if (this.type === 'OUT') {
+        title.innerText = '🔄 Customer Return (Credit Note)';
+        billLabel.innerText = 'Return Credit Value:';
+        cashLabel.innerText = 'Cash Refund Given Out ($):';
+        commitBtn.innerText = '✓ COMMIT RETURN & RESTOCK';
+      } else {
+        title.innerText = '🔄 Supplier Return (Debit Note)';
+        billLabel.innerText = 'Debit Note Value (Less Owed):';
+        cashLabel.innerText = 'Cash Refund Received from Mill ($):';
+        commitBtn.innerText = '✓ COMMIT RETURN TO MILL';
+        if (notesLabel) notesLabel.innerText = 'Debit Bilty / Ref:';
+      }
+
       title.style.color = '#d97706';
-      billLabel.innerText = 'Return Credit Value:';
-      cashLabel.innerText = 'Cash Refund Given Out ($):';
-      commitBtn.innerText = '✓ COMMIT RETURN & RESTOCK';
       commitBtn.style.background = '#d97706';
     } else {
-      btnSale.style.background = '#2563eb';
-      btnSale.style.color = '#fff';
+      if (btnMain) {
+        btnMain.style.background = this.type === 'OUT' ? '#2563eb' : '#7c3aed';
+        btnMain.style.color = '#fff';
+      }
       btnReturn.style.background = '#cbd5e1';
       btnReturn.style.color = '#475569';
 
       panel.style.borderTop = 'none';
-      title.innerText = 'Customer Sales Invoice';
+
+      if (this.type === 'OUT') {
+        title.innerText = 'Customer Sales Invoice';
+        billLabel.innerText = 'Bill Total:';
+        cashLabel.innerText = 'Cash Received ($):';
+        commitBtn.innerText = '✓ COMMIT SALE';
+        commitBtn.style.background = '#16a34a';
+      } else {
+        title.innerText = 'Stock IN (Supplier Purchase)';
+        billLabel.innerText = 'Current Inward Total:';
+        cashLabel.innerText = 'Cash Paid to Supplier ($):';
+        commitBtn.innerText = '+ COMMIT STOCK IN (PURCHASE)';
+        commitBtn.style.background = '#7c3aed';
+        if (notesLabel) notesLabel.innerText = 'Mill Bill #:';
+      }
       title.style.color = '#0f172a';
-      billLabel.innerText = 'Bill Total:';
-      cashLabel.innerText = 'Cash Received ($):';
-      commitBtn.innerText = '✓ COMMIT SALE';
-      commitBtn.style.background = '#16a34a';
     }
 
-    // Start a new draft sheet with the chosen mode
+    // Creates new draft with correct isReturn flag sent to server
     await this.createNewDraft();
   }
 
+  // ---------------------------------------------------------------------
+  // 2. DRAFT LIFECYCLE (Creates Draft with isReturn sent to API)
+  // ---------------------------------------------------------------------
   async createNewDraft() {
     if (!this.currentParty) return;
 
@@ -79,7 +112,7 @@ class InvoiceDraftEngine {
       body: JSON.stringify({ 
         partyId: this.currentParty.id, 
         type: this.type,
-        isReturn: this.isReturn 
+        isReturn: this.isReturn // <-- Correctly sends true or false
       })
     });
     this.currentDraft = await res.json();
@@ -90,89 +123,41 @@ class InvoiceDraftEngine {
     this.renderTable([]);
   }
 
-  calculateBalances() {
-    if (this.txtBillTotal) {
-      this.txtBillTotal.innerText = `$${this.currentBillTotal.toFixed(2)}`;
-    }
-
-    const cashInput = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
-    const oldBalance = this.currentParty ? this.currentParty.current_balance : 0;
-
-    let newBalance = oldBalance;
-
-    if (this.type === 'OUT') {
-      if (this.isReturn) {
-        // RETURN: Returning goods reduces customer debt (- billTotal)
-        // If cash refund is given to customer, it adds back (+ cashInput)
-        newBalance = oldBalance - this.currentBillTotal + cashInput;
-      } else {
-        // SALE: Goods increase debt (+ billTotal) - cash received (- cashInput)
-        newBalance = oldBalance + this.currentBillTotal - cashInput;
-      }
-    } else {
-      // PURCHASE
-      newBalance = oldBalance - this.currentBillTotal + cashInput;
-    }
-
-    if (this.txtNewBalance) {
-      this.txtNewBalance.innerText = `$${newBalance.toFixed(2)}`;
-      this.txtNewBalance.style.color = newBalance > 0 ? '#16a34a' : '#dc2626';
-    }
-  }
-
-  setFullCash() {
-    if (this.inputCashPaid) {
-      this.inputCashPaid.value = this.currentBillTotal.toFixed(2);
-      this.calculateBalances();
-    }
-  }
-
-  async commit(btn) {
-    if (!this.currentDraft) return;
-
-    const actionText = this.isReturn ? 'RETURN and restock' : 'SALE';
-    if (!confirm(`Finalize and commit this ${actionText}?`)) return;
-
-    const cashAmount = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
-    const notesInput = document.getElementById('inputInvoiceNotes');
-    const notes = notesInput ? notesInput.value.trim() : '';
-
-    btn.disabled = true;
-    const res = await fetch(`/api/invoices/${this.currentDraft.id}/commit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paidAmount: cashAmount, notes })
-    });
-
-    const data = await res.json();
-    btn.disabled = false;
-
-    if (data.error) {
-      alert(`Commit Failed: ${data.error}`);
-    } else {
-      alert(this.isReturn ? 'Return processed! Items added back to stock.' : 'Sale committed successfully!');
-      window.location.reload();
-    }
-  }
-
-
-async loadParties() {
+  // ---------------------------------------------------------------------
+  // 3. PARTIES & BALANCES
+  // ---------------------------------------------------------------------
+  // 1. Fetch parties from API on page load
+  async loadParties() {
     const filter = this.type === 'OUT' ? 'CUSTOMER' : 'SUPPLIER';
     const res = await fetch(`/api/parties?type=${filter}`);
     this.partiesList = await res.json();
 
-    this.partySelect.innerHTML = this.partiesList.map(p => {
+    // Render full list initially
+    this.renderPartyOptions(this.partiesList);
+  }
+
+  // 2. Render options into <select id="partySelect">
+  renderPartyOptions(parties) {
+    if (!parties || parties.length === 0) {
+      this.partySelect.innerHTML = '<option value="">No matching parties found</option>';
+      this.currentParty = null;
+      if (this.txtOldBalance) this.txtOldBalance.innerText = '$0.00';
+      return;
+    }
+
+    // Preserve currently selected party if still in filtered list
+    const previousSelectedId = this.currentParty ? this.currentParty.id : null;
+
+    this.partySelect.innerHTML = parties.map(p => {
       let displayName = '';
 
       if (this.type === 'OUT') {
-        // Customer: "🏪 Shop Name (Contact Person)"
         displayName = p.shop_name 
           ? `🏪 ${p.shop_name} (${p.name})` 
           : `👤 ${p.name}`;
 
         return `<option value="${p.id}">${displayName} &nbsp;—&nbsp; Debt: $${p.current_balance.toFixed(2)}</option>`;
       } else {
-        // Supplier: "🏭 Mill / Company (Rep Name)"
         displayName = p.shop_name 
           ? `🏭 ${p.shop_name} (Rep: ${p.name})` 
           : `👤 ${p.name}`;
@@ -182,9 +167,37 @@ async loadParties() {
       }
     }).join('');
 
-    await this.handlePartyChange();
+    // Restore previous selection if possible, otherwise select first match
+    if (previousSelectedId && parties.some(p => p.id === previousSelectedId)) {
+      this.partySelect.value = previousSelectedId;
+    } else {
+      this.partySelect.value = parties[0].id;
+    }
+
+    this.handlePartyChange();
   }
 
+  // 3. Live filter triggered by typing in <input id="partySearchInput">
+  filterParties(query) {
+    const term = (query || '').toLowerCase().trim();
+
+    if (!term) {
+      this.renderPartyOptions(this.partiesList);
+      return;
+    }
+
+    const filtered = this.partiesList.filter(p => {
+      return (p.name && p.name.toLowerCase().includes(term)) ||
+             (p.shop_name && p.shop_name.toLowerCase().includes(term)) ||
+             (p.phone && p.phone.includes(term)) ||
+             (p.secondary_phone && p.secondary_phone.includes(term)) ||
+             (p.city && p.city.toLowerCase().includes(term));
+    });
+
+    this.renderPartyOptions(filtered);
+  }
+
+  // 4. Update balance display and draft when party changes
   async handlePartyChange() {
     const partyId = parseInt(this.partySelect.value);
     this.currentParty = this.partiesList.find(p => p.id === partyId) || null;
@@ -193,7 +206,6 @@ async loadParties() {
       if (this.type === 'OUT') {
         this.txtOldBalance.innerText = `$${this.currentParty.current_balance.toFixed(2)}`;
       } else {
-        // Supplier: Show absolute amount owed clearly without confusing negative signs
         const owed = this.currentParty.current_balance < 0 ? Math.abs(this.currentParty.current_balance) : 0;
         this.txtOldBalance.innerText = `$${owed.toFixed(2)}`;
       }
@@ -202,23 +214,9 @@ async loadParties() {
     await this.createNewDraft();
   }
 
-  async createNewDraft() {
-    if (!this.currentParty) return;
-
-    const res = await fetch('/api/invoices/draft', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ partyId: this.currentParty.id, type: this.type })
-    });
-    this.currentDraft = await res.json();
-    
-    // Clear notes field for the new sheet
-    const notesInput = document.getElementById('inputInvoiceNotes');
-    if (notesInput) notesInput.value = '';
-
-    this.renderTable([]);
-  }
-
+  // ---------------------------------------------------------------------
+  // 4. MODAL CONTROLS & DUAL-UNIT SELECTION
+  // ---------------------------------------------------------------------
   openAddModal(product) {
     this.selectedProduct = product;
     this.currentUnit = 'CARTON';
@@ -233,7 +231,6 @@ async loadParties() {
     document.getElementById('unitModal').style.display = 'flex';
   }
 
-// Update unit selection & calculate base cost hint
   setUnit(unit) {
     this.currentUnit = unit;
     document.getElementById('btnUnitCarton').className = `unit-btn ${unit === 'CARTON' ? 'active' : ''}`;
@@ -241,17 +238,13 @@ async loadParties() {
 
     const lastCostSpool = this.selectedProduct.last_cost_spool || 0;
     const ratio = this.selectedProduct.spools_per_carton;
-    
-    // Calculate cost in the currently selected unit
     const unitCost = unit === 'CARTON' ? (lastCostSpool * ratio) : lastCostSpool;
 
-    // Display the cost floor hint
     const hintEl = document.getElementById('txtLastCostHint');
     if (hintEl) {
-      hintEl.innerText = `Last Inward Cost: $${unitCost.toFixed(2)} / ${unit === 'CARTON' ? 'Ctn' : 'Spool'}`;
+      hintEl.innerText = `Last Cost: $${unitCost.toFixed(2)} / ${unit === 'CARTON' ? 'Ctn' : 'Spool'}`;
     }
 
-    // Default price suggestion
     let defaultPrice = 0;
     if (this.type === 'OUT') {
       defaultPrice = unit === 'CARTON' ? this.selectedProduct.wholesale_price_carton : this.selectedProduct.retail_price_spool;
@@ -265,7 +258,6 @@ async loadParties() {
     this.updateMarginDisplay();
   }
 
-// Live Profit (Sales) OR Price-Change Tracker (Purchases)
   updateMarginDisplay() {
     const feedbackEl = document.getElementById('txtMarginFeedback');
     if (!feedbackEl || !this.selectedProduct) return;
@@ -278,26 +270,23 @@ async loadParties() {
     const diff = currentPrice - prevCost;
     const percentChange = prevCost > 0 ? ((diff / prevCost) * 100).toFixed(1) : 0;
 
-    // --- CASE 1: SALES COUNTER (Profit Margin) ---
     if (this.type === 'OUT') {
       if (diff < 0) {
-        feedbackEl.style.color = '#dc2626'; // Red
+        feedbackEl.style.color = '#dc2626';
         feedbackEl.innerText = `⚠️ Selling BELOW cost! (-$${Math.abs(diff).toFixed(2)} loss/unit)`;
       } else if (diff === 0) {
         feedbackEl.style.color = '#64748b';
         feedbackEl.innerText = `Break-even ($0.00 profit)`;
       } else {
-        feedbackEl.style.color = '#16a34a'; // Green
+        feedbackEl.style.color = '#16a34a';
         feedbackEl.innerText = `✅ Profit: +$${diff.toFixed(2)} per unit (+${percentChange}%)`;
       }
-    } 
-    // --- CASE 2: PURCHASES / STOCK IN (Supplier Price Difference) ---
-    else {
+    } else {
       if (diff > 0) {
-        feedbackEl.style.color = '#ea580c'; // Orange warning
+        feedbackEl.style.color = '#ea580c';
         feedbackEl.innerText = `📈 Price INCREASE: +$${diff.toFixed(2)} (+${percentChange}%) higher than last batch`;
       } else if (diff < 0) {
-        feedbackEl.style.color = '#16a34a'; // Green discount
+        feedbackEl.style.color = '#16a34a';
         feedbackEl.innerText = `📉 Price DECREASE: -$${Math.abs(diff).toFixed(2)} (-${Math.abs(percentChange)}%) cheaper than last batch`;
       } else {
         feedbackEl.style.color = '#64748b';
@@ -375,7 +364,51 @@ async loadParties() {
     this.calculateBalances();
   }
 
-  // Set Cash Received = Bill Total with 1 click
+  // ---------------------------------------------------------------------
+  // 5. FINANCIAL CALCULATIONS & BALANCE UPDATES
+  // ---------------------------------------------------------------------
+  calculateBalances() {
+    if (this.txtBillTotal) {
+      this.txtBillTotal.innerText = `$${this.currentBillTotal.toFixed(2)}`;
+    }
+
+    const cashInput = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
+    const oldBalance = this.currentParty ? this.currentParty.current_balance : 0;
+
+    let newBalance = oldBalance;
+
+    if (this.type === 'OUT') {
+      if (this.isReturn) {
+        // Customer Return: Returning goods reduces customer debt (- billTotal)
+        // If cash refund is given to customer, it adds back (+ cashInput)
+        newBalance = oldBalance - this.currentBillTotal + cashInput;
+      } else {
+        // Standard Sale: Increases debt (+ billTotal) - cash received (- cashInput)
+        newBalance = oldBalance + this.currentBillTotal - cashInput;
+      }
+    } else {
+      // Supplier Transactions
+      if (this.isReturn) {
+        // Supplier Return (Debit Note): Returning defective goods reduces what we owe (balance moves closer to 0 / positive)
+        newBalance = oldBalance + this.currentBillTotal - cashInput;
+      } else {
+        // Inward Purchase: Increases what we owe (- billTotal) + cash paid (+ cashInput)
+        newBalance = oldBalance - this.currentBillTotal + cashInput;
+      }
+    }
+
+    if (this.txtNewBalance) {
+      if (this.type === 'OUT') {
+        this.txtNewBalance.innerText = `$${newBalance.toFixed(2)}`;
+        this.txtNewBalance.style.color = newBalance > 0 ? '#16a34a' : '#64748b';
+      } else {
+        const owed = newBalance < 0 ? Math.abs(newBalance) : 0;
+        this.txtNewBalance.innerText = `$${owed.toFixed(2)} ${newBalance < 0 ? '(Owed)' : '(Surplus)'}`;
+        this.txtNewBalance.style.color = owed > 0 ? '#dc2626' : '#16a34a';
+      }
+    }
+  }
+
   setFullCash() {
     if (this.inputCashPaid) {
       this.inputCashPaid.value = this.currentBillTotal.toFixed(2);
@@ -383,37 +416,22 @@ async loadParties() {
     }
   }
 
-  // Real-time recalculation of remaining party balance
-  calculateBalances() {
-    if (this.txtBillTotal) {
-      this.txtBillTotal.innerText = `$${this.currentBillTotal.toFixed(2)}`;
-    }
-
-    const cashPaid = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
-    const oldBalance = this.currentParty ? this.currentParty.current_balance : 0;
-
-    let newBalance = oldBalance;
-    if (this.type === 'OUT') {
-      // Sale: Old Debt + Today's Bill - Cash Received
-      newBalance = oldBalance + this.currentBillTotal - cashPaid;
-    } else {
-      // Purchase: We owe more (+ bill), minus cash we pay
-      newBalance = oldBalance - this.currentBillTotal + cashPaid;
-    }
-
-    if (this.txtNewBalance) {
-      this.txtNewBalance.innerText = `$${newBalance.toFixed(2)}`;
-      this.txtNewBalance.style.color = newBalance > 0 ? '#16a34a' : '#dc2626';
-    }
-  }
-
+  // ---------------------------------------------------------------------
+  // 6. COMMIT TRANSACTION
+  // ---------------------------------------------------------------------
   async commit(btn) {
     if (!this.currentDraft) return;
-    if (!confirm('Finalize and commit this invoice?')) return;
 
-    const cashPaid = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
-    
-    // Read the optional notes input
+    let actionText = '';
+    if (this.type === 'OUT') {
+      actionText = this.isReturn ? 'CUSTOMER RETURN (Restock Goods)' : 'SALE';
+    } else {
+      actionText = this.isReturn ? 'SUPPLIER RETURN (Debit Note)' : 'INWARD PURCHASE';
+    }
+
+    if (!confirm(`Finalize and commit this ${actionText}?`)) return;
+
+    const cashAmount = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
     const notesInput = document.getElementById('inputInvoiceNotes');
     const notes = notesInput ? notesInput.value.trim() : '';
 
@@ -421,7 +439,7 @@ async loadParties() {
     const res = await fetch(`/api/invoices/${this.currentDraft.id}/commit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paidAmount: cashPaid, notes }) // <-- Send notes
+      body: JSON.stringify({ paidAmount: cashAmount, notes })
     });
 
     const data = await res.json();
@@ -430,7 +448,7 @@ async loadParties() {
     if (data.error) {
       alert(`Commit Failed: ${data.error}`);
     } else {
-      alert('Invoice committed successfully!');
+      alert(this.isReturn ? 'Return processed and ledger updated!' : 'Invoice committed successfully!');
       window.location.reload();
     }
   }

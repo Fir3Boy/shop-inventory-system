@@ -9,7 +9,8 @@ router.post('/draft', async (req: Request, res: Response, next: NextFunction) =>
     const { partyId, type = 'OUT', isReturn = false } = req.body;
     if (!partyId) return res.status(400).json({ error: 'Party ID required.' });
 
-    const prefix = isReturn ? 'RET' : (type === 'OUT' ? 'SALE' : 'PUR');
+    // Customer returns = RET-XXXX | Supplier returns (Debit Note) = DEB-XXXX
+    const prefix = isReturn ? (type === 'OUT' ? 'RET' : 'DEB') : (type === 'OUT' ? 'SALE' : 'PUR');
     const invoiceNumber = `${prefix}-${Date.now().toString().slice(-6)}`;
 
     const result = await db.run(
@@ -110,7 +111,9 @@ router.delete('/:id/items/:itemId', async (req: Request, res: Response, next: Ne
 router.post('/:id/commit', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const invoiceId = req.params.id;
-    const paidAmount = Math.max(0, Number(req.body.paidAmount) || 0); // Cash refunded
+    const paidAmount = Math.max(0, Number(req.body.paidAmount) || 0);
+    // 1. Read discount / round-off
+    const discount = Math.max(0, Number(req.body.discount) || 0);
     const notes = req.body.notes ? String(req.body.notes).trim() : null;
 
     await db.transaction(async () => {
@@ -118,7 +121,7 @@ router.post('/:id/commit', async (req: Request, res: Response, next: NextFunctio
       if (!invoice || invoice.status !== 'DRAFT') throw new Error('Valid draft invoice required.');
 
       const items = await db.all<any>('SELECT * FROM invoice_items WHERE invoice_id = ?', [invoiceId]);
-      if (items.length === 0) throw new Error('Cannot commit an empty return/sale sheet.');
+      if (items.length === 0) throw new Error('Cannot commit an empty invoice sheet.');
 
       const party = await db.get<any>('SELECT * FROM parties WHERE id = ?', [invoice.party_id]);
       if (!party) throw new Error('Party not found.');
@@ -127,10 +130,10 @@ router.post('/:id/commit', async (req: Request, res: Response, next: NextFunctio
       for (const item of items) {
         if (invoice.type === 'OUT') {
           if (invoice.is_return === 1) {
-            // CUSTOMER RETURN: Add returned spools BACK into physical stock
+            // Customer Return: Put spools back into stock
             await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
           } else {
-            // STANDARD SALE: Deduct from stock
+            // Customer Sale: Deduct stock
             const prod = await db.get<any>('SELECT stock_spools FROM products WHERE id = ?', [item.product_id]);
             if (prod.stock_spools < item.base_quantity_spools) {
               throw new Error(`Insufficient inventory for product ID: ${item.product_id}`);
@@ -138,28 +141,37 @@ router.post('/:id/commit', async (req: Request, res: Response, next: NextFunctio
             await db.run('UPDATE products SET stock_spools = stock_spools - ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
           }
         } else {
-          // PURCHASES
-          await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          // --- SUPPLIER TRANSACTIONS ---
+          if (invoice.is_return === 1) {
+            // SUPPLIER RETURN: We are sending defective stock BACK to mill (Deduct from stock)
+            const prod = await db.get<any>('SELECT stock_spools FROM products WHERE id = ?', [item.product_id]);
+            if (prod.stock_spools < item.base_quantity_spools) {
+              throw new Error(`Cannot return ${item.base_quantity_spools} spools. Current shop stock is only ${prod.stock_spools}.`);
+            }
+            await db.run('UPDATE products SET stock_spools = stock_spools - ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          } else {
+            // INWARD PURCHASE: Stock arrives into shop
+            await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          }
         }
       }
 
       // 2. FINANCIALS & DOUBLE-ENTRY LEDGER
-      const invoiceTotal = invoice.total_amount;
+      const finalTotalAmount = Math.max(0, invoice.subtotal - discount);
+      const balanceDue = Math.max(0, finalTotalAmount - paidAmount);
       const refTag = notes ? ` [Ref: ${notes}]` : '';
       let runningBalance = party.current_balance;
 
       if (invoice.type === 'OUT') {
         if (invoice.is_return === 1) {
-          // --- CASE A: CUSTOMER RETURN / CREDIT NOTE ---
-          // 1. Return Value credits customer account (reduces debt)
-          runningBalance -= invoiceTotal;
+          // --- A. CUSTOMER RETURN (Credit Note) ---
+          runningBalance -= finalTotalAmount;
           await db.run(
             `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
              VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
-            [party.id, invoice.id, invoiceTotal, runningBalance, `Credit Note / Return #${invoice.invoice_number}${refTag}`]
+            [party.id, invoice.id, finalTotalAmount, runningBalance, `Credit Note / Return #${invoice.invoice_number}${refTag}`]
           );
 
-          // 2. If father handed cash back to customer: Debits customer account (cancels the credit back to old debt)
           if (paidAmount > 0) {
             runningBalance += paidAmount;
             await db.run(
@@ -169,12 +181,12 @@ router.post('/:id/commit', async (req: Request, res: Response, next: NextFunctio
             );
           }
         } else {
-          // --- CASE B: STANDARD SALE ---
-          runningBalance += invoiceTotal;
+          // --- B. STANDARD SALE ---
+          runningBalance += finalTotalAmount;
           await db.run(
             `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
              VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
-            [party.id, invoice.id, invoiceTotal, runningBalance, `Invoice #${invoice.invoice_number}${refTag}`]
+            [party.id, invoice.id, finalTotalAmount, runningBalance, `Invoice #${invoice.invoice_number}${refTag}`]
           );
 
           if (paidAmount > 0) {
@@ -186,22 +198,60 @@ router.post('/:id/commit', async (req: Request, res: Response, next: NextFunctio
             );
           }
         }
+      } else {
+        // --- SUPPLIER / MILL TRANSACTIONS ---
+        if (invoice.is_return === 1) {
+          // --- VENDOR RETURN / DEBIT NOTE ---
+          runningBalance += finalTotalAmount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+            [party.id, invoice.id, finalTotalAmount, runningBalance, `Debit Note / Supplier Return #${invoice.invoice_number}${refTag}`]
+          );
+
+          if (paidAmount > 0) {
+            runningBalance -= paidAmount;
+            await db.run(
+              `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+               VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+              [party.id, invoice.id, paidAmount, runningBalance, `Cash Refund Received from Mill for #${invoice.invoice_number}`]
+            );
+          }
+        } else {
+          // --- STANDARD INWARD PURCHASE ---
+          runningBalance -= finalTotalAmount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+            [party.id, invoice.id, finalTotalAmount, runningBalance, `Supplier Bill #${invoice.invoice_number}${refTag}`]
+          );
+
+          if (paidAmount > 0) {
+            runningBalance += paidAmount;
+            await db.run(
+              `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+               VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+              [party.id, invoice.id, paidAmount, runningBalance, `Cash Paid for #${invoice.invoice_number}`]
+            );
+          }
+        }
       }
 
-      // 3. Save Final Party Balance & Finalize Invoice
+      // 3. Update Party Balance and Invoice Record
       await db.run('UPDATE parties SET current_balance = ? WHERE id = ?', [runningBalance, party.id]);
 
       await db.run(
         `UPDATE invoices 
-         SET status = 'COMPLETED', paid_amount = ?, balance_due = ?, notes = ?, committed_at = CURRENT_TIMESTAMP 
+         SET status = 'COMPLETED', subtotal = ?, discount = ?, total_amount = ?, paid_amount = ?, balance_due = ?, notes = ?, committed_at = CURRENT_TIMESTAMP 
          WHERE id = ?`,
-        [paidAmount, Math.max(0, invoiceTotal - paidAmount), notes, invoiceId]
+        [invoice.subtotal, discount, finalTotalAmount, paidAmount, balanceDue, notes, invoiceId]
       );
     });
 
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+
 // 1. Search / List Invoices (by Invoice #, Ref/Notes, or Customer/Supplier Name)
 router.get('/lookup', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -288,6 +338,131 @@ router.get('/details/:identifier', async (req: Request, res: Response, next: Nex
     );
 
     res.json({ invoice, items });
+  } catch (err) { next(err); }
+});
+
+// Void / Cancel a Committed Invoice (Reverses Stock & Ledger)
+router.post('/:id/void', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const invoiceId = req.params.id;
+    const reason = req.body.reason ? String(req.body.reason).trim() : 'Mistake / Cancelled by user';
+
+    await db.transaction(async () => {
+      // 1. Fetch Invoice
+      const invoice = await db.get<any>('SELECT * FROM invoices WHERE id = ?', [invoiceId]);
+      if (!invoice) throw new Error('Invoice not found.');
+      if (invoice.status === 'CANCELLED') throw new Error('This invoice is already voided/cancelled.');
+      if (invoice.status !== 'COMPLETED') throw new Error('Only completed invoices can be voided.');
+
+      const items = await db.all<any>('SELECT * FROM invoice_items WHERE invoice_id = ?', [invoiceId]);
+      const party = await db.get<any>('SELECT * FROM parties WHERE id = ?', [invoice.party_id]);
+      if (!party) throw new Error('Associated party not found.');
+
+      // 2. REVERSE INVENTORY
+      for (const item of items) {
+        if (invoice.type === 'OUT') {
+          if (invoice.is_return === 1) {
+            // Reversing a customer return -> remove items back out of stock
+            await db.run('UPDATE products SET stock_spools = stock_spools - ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          } else {
+            // Reversing a normal sale -> add items back into physical stock
+            await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          }
+        } else {
+          // Reversing an inward invoice (Supplier)
+          if (invoice.is_return === 1) {
+            // Voiding a supplier return -> put items back in stock
+            await db.run('UPDATE products SET stock_spools = stock_spools + ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          } else {
+            // Voiding an inward purchase -> remove items from stock
+            await db.run('UPDATE products SET stock_spools = stock_spools - ? WHERE id = ?', [item.base_quantity_spools, item.product_id]);
+          }
+        }
+      }
+
+      // 3. REVERSE FINANCIALS & LEDGER
+      let runningBalance = party.current_balance;
+
+      if (invoice.type === 'OUT') {
+        if (invoice.is_return === 1) {
+          // Reversing a return: Customer debt goes back UP
+          runningBalance += invoice.total_amount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+            [party.id, invoice.id, invoice.total_amount, runningBalance, `VOID REVERSAL: Cancelled Return #${invoice.invoice_number} [${reason}]`]
+          );
+
+          if (invoice.paid_amount > 0) {
+            runningBalance -= invoice.paid_amount;
+            await db.run(
+              `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+               VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+              [party.id, invoice.id, invoice.paid_amount, runningBalance, `VOID REVERSAL: Cash Refund Cancelled for #${invoice.invoice_number}`]
+            );
+          }
+        } else {
+          // Reversing a normal sale: Customer debt goes back DOWN
+          runningBalance -= invoice.total_amount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+            [party.id, invoice.id, invoice.total_amount, runningBalance, `VOID REVERSAL: Cancelled Sale #${invoice.invoice_number} [${reason}]`]
+          );
+
+          if (invoice.paid_amount > 0) {
+            runningBalance += invoice.paid_amount;
+            await db.run(
+              `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+               VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+              [party.id, invoice.id, invoice.paid_amount, runningBalance, `VOID REVERSAL: Cash Received Cancelled for #${invoice.invoice_number}`]
+            );
+          }
+        }
+      } else {
+        // Reversing an inward invoice (Supplier)
+        if (invoice.is_return === 1) {
+          // Voiding a debit note: We owe the mill again (balance moves back down)
+          runningBalance -= invoice.total_amount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+            [party.id, invoice.id, invoice.total_amount, runningBalance, `VOID REVERSAL: Cancelled Debit Note #${invoice.invoice_number} [${reason}]`]
+          );
+        } else {
+          // Reversing a normal purchase: What we owe mill goes back DOWN (moves closer to 0)
+          runningBalance += invoice.total_amount;
+          await db.run(
+            `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+             VALUES (?, ?, 'DEBIT', ?, ?, ?)`,
+            [party.id, invoice.id, invoice.total_amount, runningBalance, `VOID REVERSAL: Cancelled Purchase #${invoice.invoice_number} [${reason}]`]
+          );
+
+          if (invoice.paid_amount > 0) {
+            runningBalance -= invoice.paid_amount;
+            await db.run(
+              `INSERT INTO ledger_entries (party_id, invoice_id, entry_type, amount, balance_after, description)
+               VALUES (?, ?, 'CREDIT', ?, ?, ?)`,
+              [party.id, invoice.id, invoice.paid_amount, runningBalance, `VOID REVERSAL: Cancelled Cash Paid for #${invoice.invoice_number}`]
+            );
+          }
+        }
+      }
+
+      // 4. Update Party Balance
+      await db.run('UPDATE parties SET current_balance = ? WHERE id = ?', [runningBalance, party.id]);
+
+      // 5. Mark Invoice as CANCELLED with audit notes
+      const voidNote = `[CANCELLED: ${reason}] ${invoice.notes || ''}`.trim();
+      await db.run(
+        `UPDATE invoices 
+         SET status = 'CANCELLED', balance_due = 0, notes = ?, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = ?`,
+        [voidNote, invoiceId]
+      );
+    });
+
+    res.json({ success: true, message: 'Invoice successfully voided. Stock and debts have been restored.' });
   } catch (err) { next(err); }
 });
 

@@ -14,8 +14,6 @@
       <div class="tiles-grid" id="salesTiles"></div>
     </section>
 
-    <!-- Outbound Draft Sheet with Live Cash Handling -->
-    <!-- TODO: Add the customer "Shop / Business Name" to ease lookup -->
     <!-- Outbound Draft Sheet with Mode Switcher -->
     <aside class="pos-invoice" id="invoicePanel">
       <div class="sheet-header">
@@ -28,23 +26,28 @@
             🛒 Standard Sale
           </button>
           <button type="button" id="btnModeReturn" class="btn-action" 
-                  style="flex:1; padding: 10px; background:#cbd5e1; color:#475569; font-weight:800;" 
+                  style="flex:1; padding: 10px; background:#334155; color:#94a3b8; font-weight:800;" 
                   onclick="draftEngine.setMode(true)">
             🔄 Customer Return
           </button>
         </div>
 
-        <h2 id="txtInvoiceTitle">Customer Sales Invoice</h2>
+        <h2 id="txtInvoiceTitle" style="color: #f8fafc;">Customer Sales Invoice</h2>
 
-        <div class="field-group" style="margin-top: 8px;">
-          <label>Customer:</label>
-          <select id="partySelect" onchange="draftEngine.handlePartyChange()"></select>
+        <div class="field-group" style="align-items: flex-start; margin-top: 8px;">
+          <label style="margin-top: 6px; color: #94a3b8;">Customer:</label>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <input type="text" id="partySearchInput" placeholder="🔍 Quick search name, shop, phone..." 
+                   oninput="draftEngine.filterParties(this.value)" 
+                   style="width: 100%; padding: 6px 10px; border: 1px solid #475569; border-radius: 4px; font-size: 0.85rem; background: #0f172a; color: #f8fafc;">
+            <select id="partySelect" onchange="draftEngine.handlePartyChange()" style="width: 100%; background: #0f172a; color: #f8fafc; border: 1px solid #475569; padding: 8px; border-radius: 4px;"></select>
+          </div>
         </div>
 
         <div class="field-group" style="margin-top: 8px;">
-          <label>Note / Ref:</label>
+          <label style="color: #94a3b8;">Note / Ref:</label>
           <input type="text" id="inputInvoiceNotes" placeholder="Optional: Return reason, bilty, or customer PO"
-                 style="flex:1; padding:8px 12px; border-radius:4px; border:1px solid #cbd5e1; font-size:0.95rem;">
+                 style="flex:1; padding:8px 12px; border-radius:4px; border:1px solid #475569; font-size:0.95rem; background: #0f172a; color: #f8fafc;">
         </div>
       </div>
 
@@ -59,31 +62,31 @@
 
       <!-- Financial Breakdown & Cash Settlement -->
       <div class="sheet-footer">
-        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 4px; color:#64748b;">
+        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 4px; color:#94a3b8;">
           <span>Current Debt Balance:</span>
           <span id="txtOldBalance">$0.00</span>
         </div>
         
-        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:1.15rem; font-weight:700;">
+        <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:1.15rem; font-weight:700; color: #f8fafc;">
           <span id="txtBillTotalLabel">Bill Total:</span>
           <span id="txtBillTotal">$0.00</span>
         </div>
 
         <!-- Cash Settlement Box -->
-        <div style="background:#f1f5f9; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #cbd5e1;">
+        <div style="background:#0f172a; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #334155;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-            <label id="lblCashPaid" style="font-weight:700; font-size:0.9rem;">Cash Received ($):</label>
+            <label id="lblCashPaid" style="font-weight:700; font-size:0.9rem; color: #94a3b8;">Cash Received ($):</label>
             <button type="button" class="btn-action" id="btnQuickCash" 
-                    style="padding: 4px 10px; font-size:0.8rem; background:#0f172a;" 
+                    style="padding: 4px 10px; font-size:0.8rem; background:#1e293b; color: #f8fafc; border: 1px solid #334155;" 
                     onclick="draftEngine.setFullCash()">
               💵 Exact Match
             </button>
           </div>
           <input type="number" id="inputCashPaid" step="0.01" value="0.00" oninput="draftEngine.calculateBalances()" 
-                 style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #94a3b8; border-radius:4px; text-align:right;">
+                 style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #475569; border-radius:4px; text-align:right; background: #1e293b; color: #f8fafc;">
         </div>
 
-        <div class="total-row" style="font-size:1.1rem; color:#1e293b; margin-bottom: 12px;">
+        <div class="total-row" style="font-size:1.1rem; color:#f8fafc; margin-bottom: 12px;">
           <span>New Customer Debt Balance:</span>
           <span id="txtNewBalance">$0.00</span>
         </div>
@@ -98,9 +101,9 @@
 
   <!-- Reusable Touch Selection Modal -->
   <div class="modal-overlay" id="unitModal">
-    <div class="modal-content">
-      <h3 id="modalProductName">Select Unit & Quantity</h3>
-      <p id="modalStockInfo" style="font-size:0.85rem; color:#64748b; margin: 8px 0;"></p>
+    <div class="modal-content" style="background: #1e293b; border: 1px solid #334155; color: #f8fafc;">
+      <h3 id="modalProductName" style="color: #f8fafc;">Select Unit & Quantity</h3>
+      <p id="modalStockInfo" style="font-size:0.85rem; color:#94a3b8; margin: 8px 0;"></p>
       
       <div class="unit-toggle-group">
         <button class="unit-btn active" id="btnUnitCarton" onclick="setModalUnit('CARTON')">Carton</button>
@@ -109,22 +112,22 @@
 
       <div class="counter-box">
         <button class="btn-circle" onclick="adjustModalQty(-1)">-</button>
-        <span class="qty-display" id="qtyDisplay">1</span>
+        <span class="qty-display" id="qtyDisplay" style="color: #f8fafc;">1</span>
         <button class="btn-circle" onclick="adjustModalQty(1)">+</button>
       </div>
 
       <!-- Updated Price Box with Cost Badge & Live Profit Feedback -->
-      <div class="price-box">
+      <div class="price-box" style="background: #0f172a; border: 1px dashed #475569;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label style="font-size:0.85rem; font-weight:bold;">Agreed Selling Price ($):</label>
+          <label style="font-size:0.85rem; font-weight:bold; color: #94a3b8;">Agreed Selling Price ($):</label>
           <!-- 1. The Cost Badge -->
-          <span id="txtLastCostHint" style="font-size:0.75rem; background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:4px; font-weight:700;">
+          <span id="txtLastCostHint" style="font-size:0.75rem; background:#3b2d12; color:#fde047; padding:3px 8px; border-radius:4px; font-weight:700; border: 1px solid #854d0e;">
             Cost: $0.00
           </span>
         </div>
 
         <!-- 2. Price input with live update listener -->
-        <input type="number" id="modalPriceInput" step="0.01" oninput="draftEngine.updateMarginDisplay()">
+        <input type="number" id="modalPriceInput" step="0.01" oninput="draftEngine.updateMarginDisplay()" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
 
         <!-- 3. The Green/Red Profit/Loss message appears here -->
         <div id="txtMarginFeedback" style="margin-top:6px; font-size:0.8rem; font-weight:700;"></div>
