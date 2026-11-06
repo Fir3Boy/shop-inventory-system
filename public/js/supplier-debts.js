@@ -9,7 +9,7 @@ async function loadSuppliers() {
   const data = await res.json();
   allSuppliers = data.suppliers || [];
 
-  document.getElementById('txtTotalPayable').innerText = `$${data.totalPayable.toFixed(2)}`;
+  document.getElementById('txtTotalPayable').innerText = `SAR ${data.totalPayable.toFixed(2)}`;
   
   const pendingCount = allSuppliers.filter(s => s.current_balance < 0).length;
   document.getElementById('txtSupplierCount').innerText = pendingCount;
@@ -61,7 +61,7 @@ function renderSupplierRows(suppliers) {
         </td>
         <td>${s.city || '-'}</td>
         <td style="font-weight:800; font-size:1.1rem; color: ${owed > 0 ? '#dc2626' : '#64748b'};">
-          $${owed.toFixed(2)}
+          SAR ${owed.toFixed(2)}
         </td>
         <td class="no-print" style="text-align:right;">
           <button class="btn-action" style="padding:8px 14px; font-size:0.9rem; font-weight:bold; background:#7c3aed;" 
@@ -84,7 +84,7 @@ async function openSupplierLedger(supplierId) {
     : data.supplier.name;
 
   document.getElementById('modalSupplierTitle').innerText = 
-    `${title} — Amount You Owe: $${owed.toFixed(2)}`;
+    `${title} — Amount You Owe: SAR ${owed.toFixed(2)}`;
 
   document.getElementById('payoutSupplierId').value = supplierId;
   document.getElementById('payoutAmount').value = '';
@@ -99,8 +99,8 @@ async function openSupplierLedger(supplierId) {
         <td><small>${new Date(e.created_at).toLocaleDateString()}</small></td>
         <td>${e.description}</td>
         <td><span style="font-weight:bold; color:${e.entry_type === 'DEBIT' ? '#16a34a' : '#dc2626'}">${e.entry_type}</span></td>
-        <td>$${e.amount.toFixed(2)}</td>
-        <td><strong>$${Math.abs(e.balance_after).toFixed(2)}</strong></td>
+        <td>SAR ${e.amount.toFixed(2)}</td>
+        <td><strong>SAR ${Math.abs(e.balance_after).toFixed(2)}</strong></td>
       </tr>
     `).join('');
   }

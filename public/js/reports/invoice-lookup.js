@@ -58,7 +58,7 @@ function renderSidebarList(invoices) {
         ${inv.notes ? `<div style="font-size:0.75rem; color:#64748b;">Ref: ${inv.notes}</div>` : ''}
         <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.8rem;">
           <span style="color:#94a3b8;">${inv.invoice_date}</span>
-          <strong style="color:#0f172a;">$${inv.total_amount.toFixed(2)}</strong>
+          <strong style="color:#0f172a;">SAR ${inv.total_amount.toFixed(2)}</strong>
         </div>
       </div>
     `;
@@ -144,15 +144,15 @@ async function fetchAndRenderInvoice(identifier) {
       <td>${it.unit}</td>
       <td><strong>${it.quantity}</strong></td>
       <td>${it.base_quantity_spools} Sp</td>
-      <td>$${it.unit_price.toFixed(2)}</td>
-      <td><strong>$${it.line_total.toFixed(2)}</strong></td>
+      <td>SAR ${it.unit_price.toFixed(2)}</td>
+      <td><strong>SAR ${it.line_total.toFixed(2)}</strong></td>
     </tr>
   `).join('');
 
   // Financial totals
-  document.getElementById('docTotalAmount').innerText = `$${invoice.total_amount.toFixed(2)}`;
-  document.getElementById('docPaidAmount').innerText = `$${invoice.paid_amount.toFixed(2)}`;
-  document.getElementById('docBalanceDue').innerText = `$${invoice.balance_due.toFixed(2)}`;
+  document.getElementById('docTotalAmount').innerText = `SAR ${invoice.total_amount.toFixed(2)}`;
+  document.getElementById('docPaidAmount').innerText = `SAR ${invoice.paid_amount.toFixed(2)}`;
+  document.getElementById('docBalanceDue').innerText = `SAR ${invoice.balance_due.toFixed(2)}`;
 }
 
 // Handler for Void Button

@@ -24,16 +24,16 @@ async function fetchDailyCashReport() {
     `Business Date: ${data.targetDate} | Printed: ${new Date().toLocaleString()}`;
 
   // KPI Cards
-  document.getElementById('txtTotalCashIn').innerText = `+SAR${s.totalCashIn.toFixed(2)}`;
-  document.getElementById('txtTotalCashOut').innerText = `-$SAR${s.totalCashOut.toFixed(2)}`;
-  document.getElementById('txtExpectedCash').innerText = `SAR${s.netExpectedDrawerCash.toFixed(2)}`;
+  document.getElementById('txtTotalCashIn').innerText = `+SAR ${s.totalCashIn.toFixed(2)}`;
+  document.getElementById('txtTotalCashOut').innerText = `-$SAR ${s.totalCashOut.toFixed(2)}`;
+  document.getElementById('txtExpectedCash').innerText = `SAR ${s.netExpectedDrawerCash.toFixed(2)}`;
 
   // Breakdown Cards
-  document.getElementById('txtSalesCash').innerText = `SAR${s.cashFromSales.toFixed(2)}`;
-  document.getElementById('txtDebtCollections').innerText = `SAR${s.cashFromDebtCollections.toFixed(2)}`;
-  document.getElementById('txtPurchasesCash').innerText = `SAR${s.cashPaidPurchases.toFixed(2)}`;
-  document.getElementById('txtSupplierDirectPayouts').innerText = `SAR${s.cashPaidSuppliersDirect.toFixed(2)}`;
-  document.getElementById('txtCustomerRefunds').innerText = `SAR${s.cashRefunded.toFixed(2)}`;
+  document.getElementById('txtSalesCash').innerText = `SAR ${s.cashFromSales.toFixed(2)}`;
+  document.getElementById('txtDebtCollections').innerText = `SAR ${s.cashFromDebtCollections.toFixed(2)}`;
+  document.getElementById('txtPurchasesCash').innerText = `SAR ${s.cashPaidPurchases.toFixed(2)}`;
+  document.getElementById('txtSupplierDirectPayouts').innerText = `SAR ${s.cashPaidSuppliersDirect.toFixed(2)}`;
+  document.getElementById('txtCustomerRefunds').innerText = `SAR ${s.cashRefunded.toFixed(2)}`;
 
   calculateDiscrepancy();
 
@@ -60,7 +60,7 @@ async function fetchDailyCashReport() {
         <td><strong>${partyDisplay}</strong></td>
         <td>${e.description}</td>
         <td style="font-weight:800; color:${isIncome ? '#16a34a' : '#dc2626'};">
-          ${isIncome ? '+' : '-'}SAR${e.amount.toFixed(2)}
+          ${isIncome ? '+' : '-'}SAR ${e.amount.toFixed(2)}
         </td>
       </tr>
     `;

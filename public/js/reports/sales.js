@@ -76,11 +76,11 @@ async function fetchSalesReport() {
   document.getElementById('salesKpis').innerHTML = `
     <div class="kpi-card">
       <div class="kpi-label">Gross Sales Revenue</div>
-      <div class="kpi-value sales">$${(sum.gross_sales || 0).toFixed(2)}</div>
+      <div class="kpi-value sales">SAR ${(sum.gross_sales || 0).toFixed(2)}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Total Gross Profit</div>
-      <div class="kpi-value profit">$${(sum.gross_profit || 0).toFixed(2)}</div>
+      <div class="kpi-value profit">SAR ${(sum.gross_profit || 0).toFixed(2)}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Completed Invoices</div>
@@ -106,10 +106,10 @@ async function fetchSalesReport() {
       <td>${r.product_name} <br><small style="color:#64748b;">${r.sku}</small></td>
       <td>${r.unit}</td>
       <td>${r.quantity}</td>
-      <td>$${r.unit_price.toFixed(2)}</td>
-      <td><strong>$${r.line_total.toFixed(2)}</strong></td>
+      <td>SAR ${r.unit_price.toFixed(2)}</td>
+      <td><strong>SAR ${r.line_total.toFixed(2)}</strong></td>
       <td style="color:${r.item_profit >= 0 ? '#16a34a' : '#dc2626'}; font-weight:700;">
-        $${r.item_profit.toFixed(2)}
+        SAR ${r.item_profit.toFixed(2)}
       </td>
     </tr>
   `).join('');

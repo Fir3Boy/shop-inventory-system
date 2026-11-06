@@ -22,7 +22,7 @@
     <div class="kpi-grid">
       <div class="kpi-card" style="border-left: 4px solid #dc2626;">
         <div class="kpi-label">Total Debt You Owe Mills (Payables)</div>
-        <div class="kpi-value" style="color:#dc2626;" id="txtTotalPayable">$0.00</div>
+        <div class="kpi-value" style="color:#dc2626;" id="txtTotalPayable">SAR 0.00</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Mills / Suppliers Pending Payment</div>
@@ -103,10 +103,10 @@
       <!-- Quick Payout Form -->
       <form onsubmit="handleSupplierPayment(event)" style="background:#f8fafc; padding: 12px; border-radius: 6px; border:1px solid #cbd5e1;">
         <input type="hidden" id="payoutSupplierId">
-        <label style="font-weight:700; font-size:0.85rem; color:#0f172a;">Record Payment Sent to Supplier ($):</label>
+        <label style="font-weight:700; font-size:0.85rem; color:#0f172a;">Record Payment Sent to Supplier (SAR ):</label>
         
         <div style="display:flex; gap: 8px; margin-top: 6px;">
-          <input type="number" id="payoutAmount" step="0.01" placeholder="Amount paid" required 
+          <input type="number" id="payoutAmount" step="10" placeholder="Amount paid" required 
                  style="flex:1; padding:10px; font-weight:700; font-size:1.1rem; border:1px solid #94a3b8; border-radius:4px;">
           <input type="text" id="payoutNote" placeholder="Check #, Bank, or Cash Ref" 
                  style="flex:1.5; padding:10px; border:1px solid #94a3b8; border-radius:4px;">

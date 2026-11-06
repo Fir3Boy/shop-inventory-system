@@ -144,8 +144,8 @@ async function fetchMovementReport() {
         <td style="font-weight:800; font-size:1rem; color:${impactColor};">
           ${impactSign}${r.base_quantity_spools} Spools
         </td>
-        <td>$${r.unit_price.toFixed(2)}</td>
-        <td><strong>$${r.line_total.toFixed(2)}</strong></td>
+        <td>SAR ${r.unit_price.toFixed(2)}</td>
+        <td><strong>SAR ${r.line_total.toFixed(2)}</strong></td>
       </tr>
     `;
   }).join('');

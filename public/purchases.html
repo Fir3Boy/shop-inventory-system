@@ -64,31 +64,31 @@
       <div class="sheet-footer">
         <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 4px; color:#94a3b8;">
           <span>Current Balance Owed:</span>
-          <span id="txtOldBalance">$0.00</span>
+          <span id="txtOldBalance">SAR 0.00</span>
         </div>
         
         <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:1.15rem; font-weight:700; color: #f8fafc;">
           <span id="txtBillTotalLabel">Current Inward Total:</span>
-          <span id="txtBillTotal">$0.00</span>
+          <span id="txtBillTotal">SAR 0.00</span>
         </div>
 
         <!-- Cash Section -->
         <div style="background:#0f172a; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #334155;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-            <label id="lblCashPaid" style="font-weight:700; font-size:0.9rem; color: #94a3b8;">Cash Paid to Supplier ($):</label>
+            <label id="lblCashPaid" style="font-weight:700; font-size:0.9rem; color: #94a3b8;">Cash Paid to Supplier (SAR ):</label>
             <button type="button" class="btn-action" id="btnQuickCash" 
                     style="padding: 4px 10px; font-size:0.8rem; background:#1e293b; color: #f8fafc; border: 1px solid #334155;" 
                     onclick="draftEngine.setFullCash()">
               💵 Exact Match
             </button>
           </div>
-          <input type="number" id="inputCashPaid" step="0.01" value="0.00" oninput="draftEngine.calculateBalances()" 
+          <input type="number" id="inputCashPaid" step="10" value="0.00" oninput="draftEngine.calculateBalances()" 
                  style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #475569; border-radius:4px; text-align:right; background: #1e293b; color: #f8fafc;">
         </div>
 
         <div class="total-row" style="font-size:1.05rem; color:#f8fafc; margin-bottom: 12px;">
           <span>New Balance With Supplier:</span>
-          <span id="txtNewBalance">$0.00</span>
+          <span id="txtNewBalance">SAR 0.00</span>
         </div>
 
         <button class="btn-commit purchase" id="btnCommitInvoice" onclick="draftEngine.commit(this)">
@@ -119,15 +119,15 @@
       <!-- Cost & Supplier Price-Hike Tracker -->
       <div class="price-box" style="background: #0f172a; border: 1px dashed #475569;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label style="font-size:0.85rem; font-weight:bold; color: #94a3b8;">Supplier Cost per Unit ($):</label>
+          <label style="font-size:0.85rem; font-weight:bold; color: #94a3b8;">Supplier Cost per Unit (SAR ):</label>
           <!-- Badge showing previous purchase price -->
           <span id="txtLastCostHint" style="font-size:0.75rem; background:#312e81; color:#c7d2fe; padding:3px 8px; border-radius:4px; font-weight:700; border: 1px solid #4338ca;">
-            Prev Cost: $0.00
+            Prev Cost: SAR 0.00
           </span>
         </div>
 
         <!-- Inward cost input -->
-        <input type="number" id="modalPriceInput" step="0.01" oninput="draftEngine.updateMarginDisplay()" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
+        <input type="number" id="modalPriceInput" step="10" oninput="draftEngine.updateMarginDisplay()" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
 
         <!-- Shows if supplier raised or reduced the price -->
         <div id="txtMarginFeedback" style="margin-top:6px; font-size:0.8rem; font-weight:700;"></div>

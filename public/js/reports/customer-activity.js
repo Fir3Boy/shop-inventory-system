@@ -95,11 +95,11 @@ async function fetchCustomerReport() {
   document.getElementById('customerKpis').innerHTML = `
     <div class="kpi-card" style="border-left: 4px solid #2563eb;">
       <div class="kpi-label">Total Amount Billed</div>
-      <div class="kpi-value sales">SAR${(sum.total_amount_billed || 0).toFixed(2)}</div>
+      <div class="kpi-value sales">SAR ${(sum.total_amount_billed || 0).toFixed(2)}</div>
     </div>
     <div class="kpi-card" style="border-left: 4px solid #16a34a;">
       <div class="kpi-label">Total Physical Spools Sold</div>
-      <div class="kpi-value profit">SAR${sum.total_spools_sold || 0} Spools</div>
+      <div class="kpi-value profit">SAR ${(sum.total_spools_sold || 0).toFixed(2)} Spools</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Invoices Completed</div>

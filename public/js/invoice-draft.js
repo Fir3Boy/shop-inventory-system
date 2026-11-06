@@ -57,12 +57,12 @@ class InvoiceDraftEngine {
       if (this.type === 'OUT') {
         title.innerText = '🔄 Customer Return (Credit Note)';
         billLabel.innerText = 'Return Credit Value:';
-        cashLabel.innerText = 'Cash Refund Given Out ($):';
+        cashLabel.innerText = 'Cash Refund Given Out (SAR ):';
         commitBtn.innerText = '✓ COMMIT RETURN & RESTOCK';
       } else {
         title.innerText = '🔄 Supplier Return (Debit Note)';
         billLabel.innerText = 'Debit Note Value (Less Owed):';
-        cashLabel.innerText = 'Cash Refund Received from Mill ($):';
+        cashLabel.innerText = 'Cash Refund Received from Mill (SAR ):';
         commitBtn.innerText = '✓ COMMIT RETURN TO MILL';
         if (notesLabel) notesLabel.innerText = 'Debit Bilty / Ref:';
       }
@@ -82,13 +82,13 @@ class InvoiceDraftEngine {
       if (this.type === 'OUT') {
         title.innerText = 'Customer Sales Invoice';
         billLabel.innerText = 'Bill Total:';
-        cashLabel.innerText = 'Cash Received ($):';
+        cashLabel.innerText = 'Cash Received (SAR ):';
         commitBtn.innerText = '✓ COMMIT SALE';
         commitBtn.style.background = '#16a34a';
       } else {
         title.innerText = 'Stock IN (Supplier Purchase)';
         billLabel.innerText = 'Current Inward Total:';
-        cashLabel.innerText = 'Cash Paid to Supplier ($):';
+        cashLabel.innerText = 'Cash Paid to Supplier (SAR ):';
         commitBtn.innerText = '+ COMMIT STOCK IN (PURCHASE)';
         commitBtn.style.background = '#7c3aed';
         if (notesLabel) notesLabel.innerText = 'Mill Bill #:';
@@ -141,7 +141,7 @@ class InvoiceDraftEngine {
     if (!parties || parties.length === 0) {
       this.partySelect.innerHTML = '<option value="">No matching parties found</option>';
       this.currentParty = null;
-      if (this.txtOldBalance) this.txtOldBalance.innerText = '$0.00';
+      if (this.txtOldBalance) this.txtOldBalance.innerText = 'SAR 0.00';
       return;
     }
 
@@ -156,14 +156,14 @@ class InvoiceDraftEngine {
           ? `🏪 ${p.shop_name} (${p.name})` 
           : `👤 ${p.name}`;
 
-        return `<option value="${p.id}">${displayName} &nbsp;—&nbsp; Debt: $${p.current_balance.toFixed(2)}</option>`;
+        return `<option value="${p.id}">${displayName} &nbsp;—&nbsp; Debt: SAR ${p.current_balance.toFixed(2)}</option>`;
       } else {
         displayName = p.shop_name 
           ? `🏭 ${p.shop_name} (Rep: ${p.name})` 
           : `👤 ${p.name}`;
 
         const owed = p.current_balance < 0 ? Math.abs(p.current_balance) : 0;
-        return `<option value="${p.id}">${displayName} &nbsp;—&nbsp; Owed: $${owed.toFixed(2)}</option>`;
+        return `<option value="${p.id}">${displayName} &nbsp;—&nbsp; Owed: SAR ${owed.toFixed(2)}</option>`;
       }
     }).join('');
 
@@ -204,10 +204,10 @@ class InvoiceDraftEngine {
 
     if (this.txtOldBalance && this.currentParty) {
       if (this.type === 'OUT') {
-        this.txtOldBalance.innerText = `$${this.currentParty.current_balance.toFixed(2)}`;
+        this.txtOldBalance.innerText = `SAR ${this.currentParty.current_balance.toFixed(2)}`;
       } else {
         const owed = this.currentParty.current_balance < 0 ? Math.abs(this.currentParty.current_balance) : 0;
-        this.txtOldBalance.innerText = `$${owed.toFixed(2)}`;
+        this.txtOldBalance.innerText = `SAR ${owed.toFixed(2)}`;
       }
     }
 
@@ -242,7 +242,7 @@ class InvoiceDraftEngine {
 
     const hintEl = document.getElementById('txtLastCostHint');
     if (hintEl) {
-      hintEl.innerText = `Last Cost: $${unitCost.toFixed(2)} / ${unit === 'CARTON' ? 'Ctn' : 'Spool'}`;
+      hintEl.innerText = `Last Cost: SAR ${unitCost.toFixed(2)} / ${unit === 'CARTON' ? 'Ctn' : 'Spool'}`;
     }
 
     let defaultPrice = 0;
@@ -273,21 +273,21 @@ class InvoiceDraftEngine {
     if (this.type === 'OUT') {
       if (diff < 0) {
         feedbackEl.style.color = '#dc2626';
-        feedbackEl.innerText = `⚠️ Selling BELOW cost! (-$${Math.abs(diff).toFixed(2)} loss/unit)`;
+        feedbackEl.innerText = `⚠️ Selling BELOW cost! (-SAR ${Math.abs(diff).toFixed(2)} loss/unit)`;
       } else if (diff === 0) {
         feedbackEl.style.color = '#64748b';
-        feedbackEl.innerText = `Break-even ($0.00 profit)`;
+        feedbackEl.innerText = `Break-even (SAR 0.00 profit)`;
       } else {
         feedbackEl.style.color = '#16a34a';
-        feedbackEl.innerText = `✅ Profit: +$${diff.toFixed(2)} per unit (+${percentChange}%)`;
+        feedbackEl.innerText = `✅ Profit: +SAR ${diff.toFixed(2)} per unit (+${percentChange}%)`;
       }
     } else {
       if (diff > 0) {
         feedbackEl.style.color = '#ea580c';
-        feedbackEl.innerText = `📈 Price INCREASE: +$${diff.toFixed(2)} (+${percentChange}%) higher than last batch`;
+        feedbackEl.innerText = `📈 Price INCREASE: +SAR ${diff.toFixed(2)} (+${percentChange}%) higher than last batch`;
       } else if (diff < 0) {
         feedbackEl.style.color = '#16a34a';
-        feedbackEl.innerText = `📉 Price DECREASE: -$${Math.abs(diff).toFixed(2)} (-${Math.abs(percentChange)}%) cheaper than last batch`;
+        feedbackEl.innerText = `📉 Price DECREASE: -SAR ${Math.abs(diff).toFixed(2)} (-${Math.abs(percentChange)}%) cheaper than last batch`;
       } else {
         feedbackEl.style.color = '#64748b';
         feedbackEl.innerText = `Same as previous purchase rate`;
@@ -353,8 +353,8 @@ class InvoiceDraftEngine {
           <td><strong>${item.product_name}</strong></td>
           <td>${item.unit}</td>
           <td>${item.quantity}</td>
-          <td>$${item.unit_price.toFixed(2)}</td>
-          <td>$${item.line_total.toFixed(2)}</td>
+          <td>SAR ${item.unit_price.toFixed(2)}</td>
+          <td>SAR ${item.line_total.toFixed(2)}</td>
           <td><button class="btn-delete-row" onclick="draftEngine.removeItem(${item.id})">&times;</button></td>
         </tr>
       `;
@@ -369,7 +369,7 @@ class InvoiceDraftEngine {
   // ---------------------------------------------------------------------
   calculateBalances() {
     if (this.txtBillTotal) {
-      this.txtBillTotal.innerText = `$${this.currentBillTotal.toFixed(2)}`;
+      this.txtBillTotal.innerText = `SAR ${this.currentBillTotal.toFixed(2)}`;
     }
 
     const cashInput = this.inputCashPaid ? (parseFloat(this.inputCashPaid.value) || 0) : 0;
@@ -399,11 +399,11 @@ class InvoiceDraftEngine {
 
     if (this.txtNewBalance) {
       if (this.type === 'OUT') {
-        this.txtNewBalance.innerText = `$${newBalance.toFixed(2)}`;
+        this.txtNewBalance.innerText = `SAR ${newBalance.toFixed(2)}`;
         this.txtNewBalance.style.color = newBalance > 0 ? '#16a34a' : '#64748b';
       } else {
         const owed = newBalance < 0 ? Math.abs(newBalance) : 0;
-        this.txtNewBalance.innerText = `$${owed.toFixed(2)} ${newBalance < 0 ? '(Owed)' : '(Surplus)'}`;
+        this.txtNewBalance.innerText = `SAR ${owed.toFixed(2)} ${newBalance < 0 ? '(Owed)' : '(Surplus)'}`;
         this.txtNewBalance.style.color = owed > 0 ? '#dc2626' : '#16a34a';
       }
     }

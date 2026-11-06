@@ -95,11 +95,11 @@ async function fetchSupplierReport() {
   document.getElementById('supplierKpis').innerHTML = `
     <div class="kpi-card" style="border-left: 4px solid #7c3aed;">
       <div class="kpi-label">Total Inward Purchases</div>
-      <div class="kpi-value" style="color:#7c3aed;">$${(sum.total_inward_cost || 0).toFixed(2)}</div>
+      <div class="kpi-value" style="color:#7c3aed;">SAR ${(sum.total_inward_cost || 0).toFixed(2)}</div>
     </div>
     <div class="kpi-card" style="border-left: 4px solid #16a34a;">
       <div class="kpi-label">Total Physical Spools Received</div>
-      <div class="kpi-value profit">${sum.total_spools_received || 0} Spools</div>
+      <div class="kpi-value profit">SAR ${sum.total_spools_received || 0} Spools</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Mill Consignments Received</div>
@@ -132,8 +132,8 @@ async function fetchSupplierReport() {
       </td>
       <td>${r.quantity} ${r.unit}</td>
       <td><strong style="color:#16a34a;">+${r.base_quantity_spools} Spools</strong></td>
-      <td>$${r.unit_price.toFixed(2)}</td>
-      <td><strong style="color:#7c3aed;">$${r.line_total.toFixed(2)}</strong></td>
+      <td>SAR ${r.unit_price.toFixed(2)}</td>
+      <td><strong style="color:#7c3aed;">SAR ${r.line_total.toFixed(2)}</strong></td>
     </tr>
   `).join('');
 }

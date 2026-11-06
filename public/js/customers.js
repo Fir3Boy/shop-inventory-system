@@ -31,9 +31,9 @@ function renderCustomerTable(customers) {
         ${c.secondary_phone ? `<br><small style="color:#16a34a;">💬 WA: ${c.secondary_phone}</small>` : ''}
       </td>
       <td>${c.city || c.address || '-'}</td>
-      <td>${c.credit_limit > 0 ? `$${c.credit_limit.toFixed(2)}` : '<span style="color:#64748b;">No Limit</span>'}</td>
+      <td>${c.credit_limit > 0 ? `SAR ${c.credit_limit.toFixed(2)}` : '<span style="color:#64748b;">No Limit</span>'}</td>
       <td style="font-weight:800; font-size:1.05rem; color:${c.current_balance > 0 ? '#16a34a' : '#64748b'};">
-        $${c.current_balance.toFixed(2)}
+        SAR ${c.current_balance.toFixed(2)}
       </td>
       <td>
         <div style="display:flex; gap:4px;">

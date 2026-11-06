@@ -22,7 +22,7 @@
     <div class="kpi-grid">
       <div class="kpi-card" style="border-left: 4px solid #16a34a;">
         <div class="kpi-label">Total Customer Debt Owed to You</div>
-        <div class="kpi-value profit" id="txtTotalReceivable">$0.00</div>
+        <div class="kpi-value profit" id="txtTotalReceivable">SAR 0.00</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Total Customers with Balance</div>
@@ -39,8 +39,8 @@
       <div style="display: flex; gap: 8px; align-items: center;">
         <label style="font-size: 0.85rem; font-weight: 700; color: #475569;">Show:</label>
         <select id="filterDebtorStatus" onchange="filterDebtorsTable()" style="padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
-          <option value="DEBT_ONLY" selected>Has Outstanding Debt Only (> $0)</option>
-          <option value="ALL">All Customers (Including $0 Balance)</option>
+          <option value="DEBT_ONLY" selected>Has Outstanding Debt Only (> SAR 0)</option>
+          <option value="ALL">All Customers (Including SAR 0 Balance)</option>
         </select>
       </div>
 
@@ -103,10 +103,10 @@
       <!-- Quick Cash Collection Form -->
       <form onsubmit="handleCustomerPayment(event)" style="background:#f8fafc; padding: 12px; border-radius: 6px; border:1px solid #cbd5e1;">
         <input type="hidden" id="collectCustomerId">
-        <label style="font-weight:700; font-size:0.85rem; color:#0f172a;">Collect Cash from Customer ($):</label>
+        <label style="font-weight:700; font-size:0.85rem; color:#0f172a;">Collect Cash from Customer (SAR ):</label>
         
         <div style="display:flex; gap: 8px; margin-top: 6px;">
-          <input type="number" id="collectAmount" step="0.01" placeholder="Amount received" required 
+          <input type="number" id="collectAmount" step="10" placeholder="Amount received" required 
                  style="flex:1; padding:10px; font-weight:700; font-size:1.1rem; border:1px solid #94a3b8; border-radius:4px;">
           <input type="text" id="collectNote" placeholder="Optional note" 
                  style="flex:1.5; padding:10px; border:1px solid #94a3b8; border-radius:4px;">

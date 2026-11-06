@@ -117,10 +117,10 @@ function calculatePhysicalTotal() {
 
   if (diff < 0) {
     preview.style.color = '#dc2626';
-    preview.innerText = `⚠️ Deficit: ${Math.abs(diff)} Spools MISSING or DAMAGED. Estimated Loss: -$${estLoss.toFixed(2)}`;
+    preview.innerText = `⚠️ Deficit: ${Math.abs(diff)} Spools MISSING or DAMAGED. Estimated Loss: -SAR ${estLoss.toFixed(2)}`;
   } else if (diff > 0) {
     preview.style.color = '#16a34a';
-    preview.innerText = `➕ Surplus: +${diff} Spools EXTRA on shelf. Stock value will increase by +$${estLoss.toFixed(2)}`;
+    preview.innerText = `➕ Surplus: +${diff} Spools EXTRA on shelf. Stock value will increase by +SAR ${estLoss.toFixed(2)}`;
   } else {
     preview.style.color = '#64748b';
     preview.innerText = `✓ Counts match exactly. No inventory adjustment needed.`;
@@ -188,8 +188,8 @@ async function loadAuditHistory() {
   const sum = data.summary || {};
   document.getElementById('auditKpis').innerHTML = `
     <div class="kpi-card" style="border-left: 4px solid #dc2626;">
-      <div class="kpi-label">Total Written-Off Loss ($)</div>
-      <div class="kpi-value" style="color:#dc2626;">$${(sum.total_financial_loss || 0).toFixed(2)}</div>
+      <div class="kpi-label">Total Written-Off Loss (SAR )</div>
+      <div class="kpi-value" style="color:#dc2626;">SAR ${(sum.total_financial_loss || 0).toFixed(2)}</div>
     </div>
     <div class="kpi-card" style="border-left: 4px solid #ea580c;">
       <div class="kpi-label">Damaged / Missing Spools</div>
@@ -224,7 +224,7 @@ async function loadAuditHistory() {
           ${r.delta_spools > 0 ? '+' : ''}${r.delta_spools} Spools
         </td>
         <td style="font-weight:700; color:${isLoss ? '#dc2626' : '#64748b'};">
-          ${isLoss ? `$${r.total_loss_value.toFixed(2)}` : '$0.00'}
+          ${isLoss ? `SAR ${r.total_loss_value.toFixed(2)}` : 'SAR 0.00'}
         </td>
         <td><small>${r.notes || '-'}</small></td>
       </tr>

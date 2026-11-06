@@ -115,9 +115,9 @@ function renderCatalogTable(products) {
       <td><small>${p.category_name} &rarr; ${p.brand_name}</small></td>
       <td>1 Ctn = ${p.spools_per_carton} Sp</td>
       <td>📦 ${p.stock_cartons} Ctn + ${p.loose_spools} Sp</td>
-      <td>$${p.cost_price_spool.toFixed(2)}</td>
-      <td>$${p.retail_price_spool.toFixed(2)}</td>
-      <td>$${p.wholesale_price_carton.toFixed(2)}</td>
+      <td>SAR ${p.cost_price_spool.toFixed(2)}</td>
+      <td>SAR ${p.retail_price_spool.toFixed(2)}</td>
+      <td>SAR ${p.wholesale_price_carton.toFixed(2)}</td>
       <td>
         <span style="font-weight:700; font-size:0.75rem; padding:2px 6px; border-radius:4px; 
               ${p.is_active === 1 ? 'background:#dcfce7; color:#166534;' : 'background:#fee2e2; color:#991b1b;'}">

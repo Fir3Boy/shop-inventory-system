@@ -64,31 +64,31 @@
       <div class="sheet-footer">
         <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 4px; color:#94a3b8;">
           <span>Current Debt Balance:</span>
-          <span id="txtOldBalance">$0.00</span>
+          <span id="txtOldBalance">SAR 0.00</span>
         </div>
         
         <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:1.15rem; font-weight:700; color: #f8fafc;">
           <span id="txtBillTotalLabel">Bill Total:</span>
-          <span id="txtBillTotal">$0.00</span>
+          <span id="txtBillTotal">SAR 0.00</span>
         </div>
 
         <!-- Cash Settlement Box -->
         <div style="background:#0f172a; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #334155;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-            <label id="lblCashPaid" style="font-weight:700; font-size:0.9rem; color: #94a3b8;">Cash Received ($):</label>
+            <label id="lblCashPaid" style="font-weight:700; font-size:0.9rem; color: #94a3b8;">Cash Received (SAR ):</label>
             <button type="button" class="btn-action" id="btnQuickCash" 
                     style="padding: 4px 10px; font-size:0.8rem; background:#1e293b; color: #f8fafc; border: 1px solid #334155;" 
                     onclick="draftEngine.setFullCash()">
               💵 Exact Match
             </button>
           </div>
-          <input type="number" id="inputCashPaid" step="0.01" value="0.00" oninput="draftEngine.calculateBalances()" 
+          <input type="number" id="inputCashPaid" step="10" value="0.00" oninput="draftEngine.calculateBalances()" 
                  style="width:100%; padding:10px; font-size:1.25rem; font-weight:800; border:1px solid #475569; border-radius:4px; text-align:right; background: #1e293b; color: #f8fafc;">
         </div>
 
         <div class="total-row" style="font-size:1.1rem; color:#f8fafc; margin-bottom: 12px;">
           <span>New Customer Debt Balance:</span>
-          <span id="txtNewBalance">$0.00</span>
+          <span id="txtNewBalance">SAR 0.00</span>
         </div>
 
         <button class="btn-commit" id="btnCommitInvoice" onclick="draftEngine.commit(this)">
@@ -119,15 +119,15 @@
       <!-- Updated Price Box with Cost Badge & Live Profit Feedback -->
       <div class="price-box" style="background: #0f172a; border: 1px dashed #475569;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label style="font-size:0.85rem; font-weight:bold; color: #94a3b8;">Agreed Selling Price ($):</label>
+          <label style="font-size:0.85rem; font-weight:bold; color: #94a3b8;">Agreed Selling Price (SAR ):</label>
           <!-- 1. The Cost Badge -->
           <span id="txtLastCostHint" style="font-size:0.75rem; background:#3b2d12; color:#fde047; padding:3px 8px; border-radius:4px; font-weight:700; border: 1px solid #854d0e;">
-            Cost: $0.00
+            Cost: SAR 0.00
           </span>
         </div>
 
         <!-- 2. Price input with live update listener -->
-        <input type="number" id="modalPriceInput" step="0.01" oninput="draftEngine.updateMarginDisplay()" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
+        <input type="number" id="modalPriceInput" step="10" oninput="draftEngine.updateMarginDisplay()" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569;">
 
         <!-- 3. The Green/Red Profit/Loss message appears here -->
         <div id="txtMarginFeedback" style="margin-top:6px; font-size:0.8rem; font-weight:700;"></div>
