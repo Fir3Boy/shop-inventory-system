@@ -1,26 +1,59 @@
 {
-  "name": "shop-inventory-system",
+  "name": "textile-pos",
   "version": "1.0.0",
-  "description": "test",
-  "main": "index.js",
+  "description": "Textile Shop Inventory, POS, and Debt Management System",
+  "main": "dist/main.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "dev:web": "tsx watch src/server.ts",
+    "compile": "tsc",
+    "electron:dev": "tsc && electron .",
+    "build:exe": "tsc && electron-builder --win portable",
+    "postinstall": "electron-builder install-app-deps"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "build": {
+    "appId": "com.textilepos.app",
+    "productName": "TextilePOS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "public/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/db/schema.sql",
+        "to": "schema.sql"
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/sqlite3/**/*"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    }
+  },
   "dependencies": {
-    "express": "^5.2.1",
-    "sqlite3": "^6.0.1"
+    "express": "^4.21.2",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.6.2",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.1",
     "@types/sqlite3": "^3.1.11",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   }
 }

@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { db } from './db';
 
 import catalogRouter from './routes/catalog';
@@ -9,36 +10,51 @@ import reportsRouter from './routes/reports';
 import customersRouter from './routes/customers';
 import suppliersRouter from './routes/suppliers';
 import adjustmentsRouter from './routes/adjustments';
-
 import backupRouter from './routes/backup';
-
-
-
-
-
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Mount backup API
-app.use('/api/backup', backupRouter);
-
-// Mount adjustments API
-app.use('/api/adjustments', adjustmentsRouter);
-
-// Mount domain routes
-app.use('/api/customers', customersRouter);
-app.use('/api/suppliers', suppliersRouter);
-
-// Register reports gateway
-app.use('/api/reports', reportsRouter);
-
 // Standard Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.resolve(process.cwd(), 'public')));
 
-// Mount Domain Routers
+/**
+ * Robust path resolution for both Local Dev, TS execution, and Packaged Electron (ASAR)
+ */
+function getPublicPath(): string {
+  // 1. Packaged or Compiled dist/ location (resolves inside app.asar/public)
+  const appAsarPath = path.join(__dirname, '..', 'public');
+  if (fs.existsSync(appAsarPath)) {
+    return appAsarPath;
+  }
+
+  // 2. Resources path (if unpacked outside asar)
+  if ((process as any).resourcesPath) {
+    const resourcesPath = path.join((process as any).resourcesPath, 'public');
+    if (fs.existsSync(resourcesPath)) return resourcesPath;
+  }
+
+  // 3. Fallback for tsx / dev server
+  return path.resolve(process.cwd(), 'public');
+}
+
+const PUBLIC_DIR = getPublicPath();
+
+// Serve static frontend files
+app.use(express.static(PUBLIC_DIR));
+
+// Explicit root route fallback to ensure index.html always serves
+app.get('/', (_req: Request, res: Response) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
+// Mount APIs & Domain Routers
+app.use('/api/backup', backupRouter);
+app.use('/api/adjustments', adjustmentsRouter);
+app.use('/api/customers', customersRouter);
+app.use('/api/suppliers', suppliersRouter);
+app.use('/api/reports', reportsRouter);
 app.use('/api/catalog', catalogRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/parties', partiesRouter);
@@ -49,33 +65,14 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(400).json({ error: err.message });
 });
 
-// App Lifecycle
-let server: ReturnType<typeof app.listen>;
-
-async function bootstrap() {
-  await db.initializeSchema();
-  server = app.listen(PORT, () => {
-    console.log(`=================================================`);
-    console.log(` Textile Shop ERP: http://localhost:${PORT}`);
-    console.log(` Mode: Offline-First SQLite (WAL Enabled)       `);
-    console.log(`=================================================`);
+// Only listen directly if running standalone web mode (outside Electron)
+if (!process.versions.electron) {
+  db.initializeSchema().then(() => {
+    app.listen(PORT, () => {
+      console.log(`[STANDALONE WEB] Express listening at http://localhost:${PORT}`);
+      console.log(`[STANDALONE WEB] Serving assets from: ${PUBLIC_DIR}`);
+    });
   });
 }
 
-const shutdown = (signal: string) => {
-  console.log(`\nReceived ${signal}. Gracefully stopping server...`);
-  if (server) {
-    server.close(async () => {
-      await db.close();
-      console.log('Database connection safely closed. Process exiting.');
-      process.exit(0);
-    });
-  } else {
-    process.exit(0);
-  }
-};
-
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-
-void bootstrap();
+export { app, PUBLIC_DIR };

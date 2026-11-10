@@ -5,15 +5,51 @@ import fs from 'fs';
 // Enable verbose mode in development for stack traces
 const sqlite = sqlite3.verbose();
 
-const DB_PATH = path.resolve(process.cwd(), 'data', 'inventory.sqlite');
-const SCHEMA_PATH = path.resolve(__dirname, 'schema.sql');
+/**
+ * Determine permanent directory next to the physical .exe 
+ * (or project root during local development).
+ */
+function getBaseDataDirectory(): string {
+  // 1. If running as a portable executable built with electron-builder:
+  if (process.env.PORTABLE_EXECUTABLE_DIR) {
+    return process.env.PORTABLE_EXECUTABLE_DIR;
+  }
+
+  // 2. If running as a packaged/installed Electron app:
+  if (process.versions.electron && (process as any).resourcesPath) {
+    return path.dirname(process.execPath);
+  }
+
+  // 3. Fallback to project root during local development (npm run dev / tsx)
+  return process.cwd();
+}
+
+const BASE_DIR = getBaseDataDirectory();
+
+// Always keep the database inside a 'data' folder next to the .exe / project root
+const DB_PATH = path.resolve(BASE_DIR, 'data', 'inventory.sqlite');
+
+/**
+ * Locate schema.sql safely in development or packaged production resources
+ */
+function getSchemaPath(): string {
+  // Check inside Electron resources path first (packaged app)
+  if ((process as any).resourcesPath) {
+    const packagedPath = path.join((process as any).resourcesPath, 'schema.sql');
+    if (fs.existsSync(packagedPath)) return packagedPath;
+  }
+  // Development path fallback
+  return path.resolve(process.cwd(), 'src', 'db', 'schema.sql');
+}
+
+const SCHEMA_PATH = getSchemaPath();
 
 class DatabaseManager {
   private static instance: DatabaseManager;
   private db: sqlite3.Database;
 
   private constructor() {
-    // Ensure the output data directory exists
+    // Ensure the output data directory exists (e.g., /data) next to the executable
     const dataDir = path.dirname(DB_PATH);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
@@ -48,6 +84,9 @@ class DatabaseManager {
 
   public async initializeSchema(): Promise<void> {
     try {
+      if (!fs.existsSync(SCHEMA_PATH)) {
+        throw new Error(`schema.sql not found at path: ${SCHEMA_PATH}`);
+      }
       const sql = fs.readFileSync(SCHEMA_PATH, 'utf8');
       await this.exec(sql);
       console.log('Database schema & system seeds successfully verified.');
