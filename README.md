@@ -64,3 +64,7 @@ npm install
 
 # Run in development mode (spins up Express and Electron concurrently)
 npm run dev
+
+Building the Portable Executable
+Bash
+npm run build:exe
